@@ -8,7 +8,7 @@
 #include "dna.h"
 
 int main(int argc, char* argv[]) {
-  // std::string path = "test.txt";
+  // std::string path = "data/chmpxx";
   // if (argc > 1) {
   //     path = argv[1];
   // }
