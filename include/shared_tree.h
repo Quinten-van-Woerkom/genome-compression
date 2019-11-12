@@ -28,44 +28,39 @@ constexpr auto hash_impl() noexcept -> std::size_t {
 }
 
 /**
- *  Leaf node of a non-owning tree.
- *  Contains the stored data as well as a sentinel value to denote that it is a
- *  leaf node.
+ *  Annotated pointer to another node in the tree.
+ *  This node can be either a leaf or an internal node.
+ *  Data is assumed to be approximately the same size as a pointer.
  */
 template<typename Data>
-class leaf {
+class node_pointer {
 public:
+    // TODO: Add accessor functions
 
 private:
-
+    // TODO: Add annotations for similarity transforms
+    bool is_leaf : 1;
+    union {
+        node* subnode;
+        Data data;
+    }
 }
 
 /**
- *  Annotated pointer to another node in the tree.
- *  TODO: Allow similarity transforms, such as mirroring and inversion.
+ *  Node in a non-owning tree. Children are either other nodes or leaf nodes,
+ *  containing the actual data stored.
  */
 template<typename Data>
 class node {
 public:
 
 private:
-
-}
-
-/**
- *  Node in a non-owning tree. Children are either other nodes or leaf nodes.
- */
-template<typename Data>
-class internal_node {
-public:
-
-private:
-
+    node_pointer<Data> left, right;
 }
 
 /**
  *  Shared tree, where the manner of construction is not strictly given.
- *  Note that the tree itself is non-owning; rather, the nodes are stored
+ *  Note that the tree itself is non-owning; rather, the nodes must be stored
  *  elsewhere to allow for canonicalisation of nodes.
  */
 template<typename Data>
@@ -74,5 +69,5 @@ public:
 
 
 private:
-    node* root;
+    node_pointer root_node;
 }
