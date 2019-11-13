@@ -1,14 +1,15 @@
 /**
  *  Shared tree, i.e. a tree compressed to a directed acyclic graph through
  *  common subtree merging.
- *  TODO: Implement symmetry
  */
 
 #include <unordered_set>
 
 namespace detail {
-/// Hash function for any set of arguments.
-/// Requires that the arguments be convertible to std::size_t
+/**
+ *  Hash function for an arbitrary set of arguments.
+ *  Requires only that each argument be convertible to std::size_t.
+ */
 template <typename... Args> auto hash(Args &&... args) noexcept -> std::size_t {
   if constexpr (sizeof...(args) == 0) return 0;
   else {
@@ -35,15 +36,19 @@ constexpr auto hash_impl() noexcept -> std::size_t {
 template<typename Data>
 class node_pointer {
 public:
-    // TODO: Add accessor functions
+  // TODO: Add accessor functions
+
+
+  operator std::size_t() const noexcept { return as_unsigned; }
 
 private:
-    // TODO: Add annotations for similarity transforms
-    bool is_leaf : 1;
-    union {
-        node* subnode;
-        Data data;
-    }
+  // TODO: Add annotations for similarity transforms
+  bool is_leaf : 1;
+  union {
+    node* subnode;
+    Data data;
+    std::size_t as_unsigned;
+  }
 }
 
 /**
@@ -55,7 +60,7 @@ class node {
 public:
 
 private:
-    node_pointer<Data> left, right;
+  node_pointer<Data> left, right;
 }
 
 /**
@@ -69,5 +74,5 @@ public:
 
 
 private:
-    node_pointer root_node;
+  node_pointer root_node;
 }
