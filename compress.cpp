@@ -5,6 +5,8 @@
 
 #include <filesystem>
 #include <iostream>
+#include <vector>
+
 #include "dna.h"
 #include "shared_tree.h"
 
@@ -19,9 +21,9 @@ int main(int argc, char* argv[]) {
   dna test{"ACGTTGCA"};
   std::cout << test << '\n';
 
-  dna left{"ACGTTGCA"};
-  dna right{"TGACTGAC"};
-  node<dna> dna_node{left, right};
-  std::cout << "Hello, world!\n";
-  std::cout << dna_node.right_leaf() << '\n';
+  auto data = std::vector<dna>{
+    {"ACGTTGCA"}, {"TGACTGAC"}, {"TTTTAAAA"}
+  };
+
+  auto tree = shared_binary_tree<dna>::construct_from(data);
 }
