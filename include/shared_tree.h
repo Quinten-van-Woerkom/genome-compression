@@ -135,7 +135,35 @@ public:
   shared_binary_tree(pointer root, std::unordered_set<node_type> nodes)
     : root{root}, nodes{nodes} {}
 
-  static auto construct_from(const std::vector<Data>& data) -> shared_binary_tree {
+  static auto construct_from(const std::vector<Data>& data) -> shared_binary_tree<Data>;
+
+  constexpr auto left_leaf() const -> Data { return root.get_node().left_leaf(); }
+  constexpr auto right_leaf() const -> Data { return root.get_node().right_leaf(); }
+  constexpr auto left_node() const -> const node_type& { return root.get_node().left_node(); }
+  constexpr auto right_node() const -> const node_type& { return root.get_node().right_node(); }
+
+  // Number of elements stored
+  constexpr auto size() const -> std::size_t { return nodes.size(); }
+
+  // Length of the data sequence
+  constexpr auto length() const -> std::size_t { return root.size(); }
+
+  constexpr auto operator[](std::size_t index) const -> Data {
+    if (root.is_leaf()) return root.get_leaf();
+    else return root.get_node()[index];
+  }
+
+private:
+  pointer root;
+  std::unordered_set<node_type> nodes;
+};
+
+/**
+ *  Constructs a shared binary tree from a vector of data, using spatial
+ *  subdivision for common subtree merging.
+ */
+template<typename Data>
+auto shared_binary_tree<Data>::construct_from(const std::vector<Data>& data) -> shared_binary_tree<Data> {
     std::unordered_set<node_type> nodes;
     using iter = typename std::unordered_set<node_type>::const_iterator;
     std::vector<iter> previous_layer;
@@ -165,24 +193,3 @@ public:
     auto root = pointer{*(previous_layer.front())};
     return shared_binary_tree{root, nodes};
   }
-
-  constexpr auto left_leaf() const -> Data { return root.get_node().left_leaf(); }
-  constexpr auto right_leaf() const -> Data { return root.get_node().right_leaf(); }
-  constexpr auto left_node() const -> const node_type& { return root.get_node().left_node(); }
-  constexpr auto right_node() const -> const node_type& { return root.get_node().right_node(); }
-
-  // Number of elements stored
-  constexpr auto size() const -> std::size_t { return nodes.size(); }
-
-  // Length of the data sequence
-  constexpr auto length() const -> std::size_t { return root.size(); }
-
-  constexpr auto operator[](std::size_t index) const -> Data {
-    if (root.is_leaf()) return root.get_leaf();
-    else return root.get_node()[index];
-  }
-
-private:
-  pointer root;
-  std::unordered_set<node_type> nodes;
-};
