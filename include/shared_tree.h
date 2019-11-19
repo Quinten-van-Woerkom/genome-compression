@@ -53,6 +53,19 @@ public:
   // Hash function
   constexpr auto hash() const noexcept -> std::size_t { return detail::hash(left, right); }
 
+  constexpr auto size() const noexcept -> std::size_t { return left.size() + right.size(); }
+
+  // Accessor
+  constexpr auto operator[](std::size_t index) const -> Data {
+    if (index < left.size()) {
+      if (left.is_leaf()) return left_leaf();
+      else return left_node()[index];
+    } else {
+      if (right.is_leaf()) return right_leaf();
+      else return right_node()[index - left.size()];
+    }
+  }
+
   constexpr auto operator==(const node& other) const noexcept {
     return left == other.left && right == other.right;
   }
@@ -65,9 +78,9 @@ public:
    */
   class pointer {
   public:
-    pointer(std::nullptr_t) : leaf_node{false}, subnode{nullptr} {}  // Special construct to denote the absence of data
-    pointer(const node& subnode) : leaf_node{false}, subnode{&subnode} {}
-    pointer(Data data) : leaf_node{true}, data{data} {}
+    pointer(std::nullptr_t) : leaf_node{false}, size_{0}, subnode{nullptr} {}  // Special construct to denote the absence of data
+    pointer(const node& subnode) : leaf_node{false}, size_{subnode.size()}, subnode{&subnode} {}
+    pointer(Data data) : leaf_node{true}, size_{1}, data{data} {}
 
     constexpr operator std::size_t() const noexcept { return as_unsigned; }
 
@@ -76,6 +89,7 @@ public:
     }
 
     constexpr auto empty() const noexcept -> bool { return subnode == nullptr && !is_leaf(); }
+    constexpr auto size() const noexcept -> std::size_t { return size_; }
     constexpr auto is_leaf() const noexcept -> bool { return leaf_node; }
     // TODO: Add checks for emptiness
     constexpr auto get_leaf() const -> Data { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return data; }
@@ -84,6 +98,9 @@ public:
   private:
     // TODO: Add annotations for similarity transforms
     const bool leaf_node : 1;
+    // For now, we store the size directly, though that is slightly hackish
+    const std::size_t size_;
+    
     union {
       const node* subnode;
       const Data data;
@@ -154,7 +171,16 @@ public:
   constexpr auto left_node() const -> const node_type& { return root.get_node().left_node(); }
   constexpr auto right_node() const -> const node_type& { return root.get_node().right_node(); }
 
+  // Number of elements stored
   constexpr auto size() const -> std::size_t { return nodes.size(); }
+
+  // Length of the data sequence
+  constexpr auto length() const -> std::size_t { return root.size(); }
+
+  constexpr auto operator[](std::size_t index) const -> Data {
+    if (root.is_leaf()) return root.get_leaf();
+    else return root.get_node()[index];
+  }
 
 private:
   pointer root;

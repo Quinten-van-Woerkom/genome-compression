@@ -30,4 +30,9 @@ int main(int argc, char* argv[]) {
   auto tree = shared_binary_tree<dna>::construct_from(data);
   std::cout << tree.left_node().right_node().left_leaf() << '\n';
   std::cout << tree.size() << '\n';
+  std::cout << tree.length() << '\n';
+
+  for (auto i = 0u; i < data.size(); ++i) {
+    std::cout << tree[i] << '\n';
+  }
 }
