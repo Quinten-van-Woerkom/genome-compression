@@ -5,11 +5,16 @@
 
 #include <array>
 #include <bitset>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <string_view>
+#include <vector>
+
+namespace fs = std::filesystem;
 
 // DNA strand of predetermined size
 class dna {
-private:
   static constexpr std::size_t length = 8; // Length of a single strand
 public:
   dna(const std::string_view strand);
@@ -17,7 +22,7 @@ public:
   auto operator[](std::size_t index) const -> char;
   auto nucleotide(std::size_t index) const -> char;
   
-  constexpr auto size() const noexcept -> std::size_t { return length; }
+  static constexpr auto size() noexcept -> std::size_t { return length; }
 
   friend auto operator<<(std::ostream& os, const dna& dna) -> std::ostream&;
 
@@ -38,3 +43,5 @@ namespace std {
     }
   };
 }
+
+auto read_genome(const fs::path path) -> std::vector<dna>;

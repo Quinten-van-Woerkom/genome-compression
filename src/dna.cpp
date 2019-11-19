@@ -3,8 +3,11 @@
 #include <array>
 #include <bitset>
 #include <cassert>
+#include <cctype>
 #include <iostream>
 #include <string_view>
+
+namespace fs = std::filesystem;
 
 dna::dna(const std::string_view strand) {
   assert(strand.size() == length);
@@ -51,6 +54,8 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
     assert(nucleotides.test(2*index+1) == high);
   };
 
+  nucleotide = std::toupper(nucleotide);
+
   switch (nucleotide) {
     case 'A': set_internal(index, false, false); break;
     case 'C': set_internal(index, true, false); break;
@@ -67,4 +72,29 @@ auto operator<<(std::ostream& os, const dna& dna) -> std::ostream& {
     os << dna.nucleotide(i);
   }
   return os;
+}
+
+auto read_genome(const fs::path path) -> std::vector<dna> {
+  if (!fs::exists(path)) {
+    std::cerr << "Non-existent path, aborting...\n";
+    exit(1);
+  }
+
+  auto file = std::ifstream{path, std::ios::binary};
+  constexpr auto length = dna::size();
+  auto buffer = std::array<char, length>{};
+  auto result = std::vector<dna>{};
+
+  if (!file.is_open()) {
+    std::cerr << "Unable to open file, aborting...\n";
+    exit(1);
+  }
+
+  while (true) {
+    file.read(buffer.data(), buffer.size());
+    if (file.eof()) break;
+    result.emplace_back(std::string_view{buffer.data(), buffer.size()});
+  }
+
+  return result;
 }
