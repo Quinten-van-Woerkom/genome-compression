@@ -39,16 +39,16 @@ class node {
 public:
   class pointer;
 
-  node(node& left, node& right) : left{left}, right{right} {}
+  node(const node& left, const node& right) : left{left}, right{right} {}
   node(Data left, Data right) : left{left}, right{right} {}
-  node(node& left) : left{left}, right{nullptr} {}
+  node(const node& left) : left{left}, right{nullptr} {}
   node(Data left) : left{left}, right{nullptr} {}
 
   // TODO: Add checks for empty children
-  constexpr auto left_leaf() -> Data { assert(left.is_leaf()); return left.get_leaf(); }
-  constexpr auto right_leaf() -> Data { assert(right.is_leaf()); return right.get_leaf(); }
-  constexpr auto left_node() -> node& { assert(!left.is_leaf()); return left.get_node(); }
-  constexpr auto right_node() -> node& { assert(!right.is_leaf()); return right.get_node(); }
+  constexpr auto left_leaf() const -> Data { assert(left.is_leaf()); return left.get_leaf(); }
+  constexpr auto right_leaf() const -> Data { assert(right.is_leaf()); return right.get_leaf(); }
+  constexpr auto left_node() const -> const node& { assert(!left.is_leaf()); return left.get_node(); }
+  constexpr auto right_node() const -> const node& { assert(!right.is_leaf()); return right.get_node(); }
   
   // Hash function
   constexpr auto hash() const noexcept -> std::size_t { return detail::hash(left, right); }
@@ -66,7 +66,7 @@ public:
   class pointer {
   public:
     pointer(std::nullptr_t) : leaf_node{false}, subnode{nullptr} {}  // Special construct to denote the absence of data
-    pointer(node& subnode) : leaf_node{false}, subnode{&subnode} {}
+    pointer(const node& subnode) : leaf_node{false}, subnode{&subnode} {}
     pointer(Data data) : leaf_node{true}, data{data} {}
 
     constexpr operator std::size_t() const noexcept { return as_unsigned; }
@@ -78,16 +78,16 @@ public:
     constexpr auto empty() const noexcept -> bool { return subnode == nullptr && !is_leaf(); }
     constexpr auto is_leaf() const noexcept -> bool { return leaf_node; }
     // TODO: Add checks for emptiness
-    constexpr auto get_leaf() -> Data { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return data; }
-    constexpr auto get_node() -> node& { assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf."); return *subnode; }
+    constexpr auto get_leaf() const -> Data { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return data; }
+    constexpr auto get_node() const -> const node& { assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf."); return *subnode; }
 
   private:
     // TODO: Add annotations for similarity transforms
-    bool leaf_node : 1;
+    const bool leaf_node : 1;
     union {
-      node* subnode;
-      Data data;
-      std::size_t as_unsigned;
+      const node* subnode;
+      const Data data;
+      const std::size_t as_unsigned;
     };
   };
 
@@ -120,7 +120,7 @@ public:
 
   static auto construct_from(const std::vector<Data>& data) -> shared_binary_tree {
     std::unordered_set<node_type> nodes;
-    using iter = typename std::unordered_set<node_type>::iterator;
+    using iter = typename std::unordered_set<node_type>::const_iterator;
     std::vector<iter> previous_layer;
 
     for (auto i = 0u; i < data.size() - 1; i += 2) {
@@ -132,22 +132,29 @@ public:
       previous_layer.push_back(new_node);
     }
 
-    // while (previous_layer.size() > 1) {
-    //   std::vector<iter> next_layer;
-    //   for (auto i = 0u; i < data.size() - 1; i += 2) {
-    //     auto new_node = nodes.emplace(*previous_layer[i], *previous_layer[i+1]).first;
-    //     next_layer.push_back(new_node);
-    //   }
-    //   if (data.size() % 2 != 0) {
-    //     auto new_node = nodes.emplace(*previous_layer.back()).first;
-    //     next_layer.push_back(new_node);
-    //   }
-    //   previous_layer = next_layer;
-    // }
+    while (previous_layer.size() > 1) {
+      std::vector<iter> next_layer;
+      for (auto i = 0u; i < previous_layer.size() - 1; i += 2) {
+        auto new_node = nodes.emplace(*previous_layer[i], *previous_layer[i+1]).first;
+        next_layer.push_back(new_node);
+      }
+      if (previous_layer.size() % 2 != 0) {
+        auto new_node = nodes.emplace(*previous_layer.back()).first;
+        next_layer.push_back(new_node);
+      }
+      previous_layer = next_layer;
+    }
 
     auto root = pointer{*(previous_layer.front())};
     return shared_binary_tree{root, nodes};
   }
+
+  constexpr auto left_leaf() const -> Data { return root.get_node().left_leaf(); }
+  constexpr auto right_leaf() const -> Data { return root.get_node().right_leaf(); }
+  constexpr auto left_node() const -> const node_type& { return root.get_node().left_node(); }
+  constexpr auto right_node() const -> const node_type& { return root.get_node().right_node(); }
+
+  constexpr auto size() const -> std::size_t { return nodes.size(); }
 
 private:
   pointer root;

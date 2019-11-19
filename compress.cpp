@@ -22,8 +22,12 @@ int main(int argc, char* argv[]) {
   std::cout << test << '\n';
 
   auto data = std::vector<dna>{
-    {"ACGTTGCA"}, {"TGACTGAC"}, {"TTTTAAAA"}
+    {"ACGTTGCA"}, {"TGACTGAC"}, {"TTTTAAAA"},
+    {"ACGTTGCA"}, {"TGACTGAC"}, {"TTTTAAAA"},
+    {"ACGTTGCA"}, {"TGACTGAC"}
   };
 
   auto tree = shared_binary_tree<dna>::construct_from(data);
+  std::cout << tree.left_node().right_node().left_leaf() << '\n';
+  std::cout << tree.size() << '\n';
 }
