@@ -97,14 +97,14 @@ public:
 
   private:
     // TODO: Add annotations for similarity transforms
-    const bool leaf_node : 1;
+    bool leaf_node : 1;
     // For now, we store the size directly, though that is slightly hackish
-    const std::size_t size_;
+    std::size_t size_;
     
     union {
       const node* subnode;
-      const Data data;
-      const std::size_t as_unsigned;
+      Data data;
+      std::size_t as_unsigned;
     };
   };
 
