@@ -61,6 +61,7 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
     case 'C': set_internal(index, true, false); break;
     case 'T': set_internal(index, false, true); break;
     case 'G': set_internal(index, true, true); break;
+    case '\n': case ' ': break; // We skip whitespace
     default: {
       std::cerr << "Encountered unknown symbol, aborting...\n";
       exit(1);

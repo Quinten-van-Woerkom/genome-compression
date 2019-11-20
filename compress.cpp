@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
   if (argc > 1) {
       path = argv[1];
   }
-  std::cout << "Compressing " << path << '\n';
+  std::cout << "Compressing " << path << "...";
 
   auto data = read_genome(path);
   auto compressed = shared_tree<dna>{data};
@@ -23,9 +23,9 @@ int main(int argc, char* argv[]) {
   auto compressed_size = compressed.size()*sizeof(decltype(compressed)::node_type);
   auto uncompressed_size = compressed.length()*sizeof(decltype(compressed)::value_type);
 
-  std::cout << "Done compressing\n"
-    << "Final size: " << compressed.size() << " nodes (" << compressed_size << " bytes)\n"
-    << "Data length: " << compressed.length() << " elements (" << uncompressed_size << " bytes)\n"
+  std::cout << " Done!\n"
+    << "Compressed size: " << compressed.size() << " nodes (" << compressed_size << " bytes)\n"
+    << "Uncompressed size: " << compressed.length() << " elements (" << uncompressed_size << " bytes)\n"
     << "Compression ratio: " << double(compressed_size)/double(uncompressed_size) << '\n';
 
   return 0;
