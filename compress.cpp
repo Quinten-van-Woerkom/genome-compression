@@ -16,12 +16,13 @@ int main(int argc, char* argv[]) {
       path = argv[1];
   }
   std::cout << "Compressing " << path << '\n';
-  // Todo: provide buffered file reader implementation
 
   auto data = read_genome(path);
   std::cout << "Data length: " << data.size() << " elements\n";
-  auto compressed = shared_binary_tree<dna>::construct_from(data);
+  auto compressed = shared_binary_tree<dna>{data};
   std::cout << "Done compressing\n"
     << "Final size: " << compressed.size() << " nodes\n"
     << "Data length: " << compressed.length() << " elements\n";
+
+  // compressed.print_unique();
 }

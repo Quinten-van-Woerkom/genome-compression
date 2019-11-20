@@ -38,7 +38,7 @@ private:
 namespace std {
   template<>
   struct hash<dna> {
-    std::size_t operator()(const dna& n) const noexcept {
+    auto operator()(const dna& n) const noexcept -> std::size_t {
       return n.hash();
     }
   };

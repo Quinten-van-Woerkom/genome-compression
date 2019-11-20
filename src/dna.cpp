@@ -61,6 +61,10 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
     case 'C': set_internal(index, true, false); break;
     case 'T': set_internal(index, false, true); break;
     case 'G': set_internal(index, true, true); break;
+    default: {
+      std::cerr << "Encountered unknown symbol, aborting...\n";
+      exit(1);
+    }
   }
 }
 
@@ -81,8 +85,7 @@ auto read_genome(const fs::path path) -> std::vector<dna> {
   }
 
   auto file = std::ifstream{path, std::ios::binary};
-  constexpr auto length = dna::size();
-  auto buffer = std::array<char, length>{};
+  auto buffer = std::array<char, dna::size()>{};
   auto result = std::vector<dna>{};
 
   if (!file.is_open()) {

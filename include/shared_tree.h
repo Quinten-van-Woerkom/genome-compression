@@ -70,6 +70,10 @@ public:
     return left == other.left && right == other.right;
   }
 
+  friend auto operator<<(std::ostream& os, const node& n) -> std::ostream& {
+    return os << "node<" << n.left << ", " << n.right << ">";
+  }
+
   /**
    *  Annotated pointer to another node in the tree.
    *  This node can be either a leaf or an internal node.
@@ -78,27 +82,32 @@ public:
    */
   class pointer {
   public:
-    pointer(std::nullptr_t) : leaf_node{false}, size_{0}, subnode{nullptr} {}  // Special construct to denote the absence of data
-    pointer(const node& subnode) : leaf_node{false}, size_{subnode.size()}, subnode{&subnode} {}
-    pointer(Data data) : leaf_node{true}, size_{1}, data{data} {}
+    pointer() : pointer{nullptr} {}
+    pointer(std::nullptr_t) : size_{0}, subnode{nullptr} {}  // Special construct to denote the absence of data
+    pointer(const node& subnode) : size_{subnode.size()}, subnode{&subnode} {}
+    pointer(Data data) : size_{1}, data{data} {}
 
-    constexpr operator std::size_t() const noexcept { return as_unsigned; }
+    constexpr operator std::size_t() const noexcept { return detail::hash(as_unsigned, size_); }
 
     constexpr auto operator==(const pointer& other) const noexcept {
-      return leaf_node == other.leaf_node && as_unsigned == other.as_unsigned;
+      return size_ == other.size_ && as_unsigned == other.as_unsigned;
     }
 
     constexpr auto empty() const noexcept -> bool { return subnode == nullptr && !is_leaf(); }
     constexpr auto size() const noexcept -> std::size_t { return size_; }
-    constexpr auto is_leaf() const noexcept -> bool { return leaf_node; }
+    constexpr auto is_leaf() const noexcept -> bool { return size_ == 1; }
     // TODO: Add checks for emptiness
     constexpr auto get_leaf() const -> Data { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return data; }
     constexpr auto get_node() const -> const node& { assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf."); return *subnode; }
 
+    friend auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
+      if (p.empty()) return os << "empty";
+      else if (p.is_leaf()) return os << "leaf: " << p.data;
+      else return os << "node: " << p.subnode;
+    }
+
   private:
     // TODO: Add annotations for similarity transforms
-    bool leaf_node : 1;
-    // For now, we store the size directly, though that is slightly hackish
     std::size_t size_;
     
     union {
@@ -114,7 +123,7 @@ private:
 
 namespace std {
   template<typename Data> struct hash<node<Data>> {
-    std::size_t operator()(const node<Data>& n) const noexcept {
+    auto operator()(const node<Data>& n) const noexcept -> std::size_t {
       return n.hash();
     }
   };
@@ -132,10 +141,7 @@ public:
   using node_type = node<Data>;
   using pointer = typename node_type::pointer;
 
-  shared_binary_tree(pointer root, std::unordered_set<node_type> nodes)
-    : root{root}, nodes{nodes} {}
-
-  static auto construct_from(const std::vector<Data>& data) -> shared_binary_tree<Data>;
+  shared_binary_tree(const std::vector<Data>& data);
 
   constexpr auto left_leaf() const -> Data { return root.get_node().left_leaf(); }
   constexpr auto right_leaf() const -> Data { return root.get_node().right_leaf(); }
@@ -152,6 +158,10 @@ public:
     if (root.is_leaf()) return root.get_leaf();
     else return root.get_node()[index];
   }
+  void print_unique() const {
+    for (const auto& node : nodes)
+        std::cout << node << '\n';
+  }
 
 private:
   pointer root;
@@ -163,33 +173,32 @@ private:
  *  subdivision for common subtree merging.
  */
 template<typename Data>
-auto shared_binary_tree<Data>::construct_from(const std::vector<Data>& data) -> shared_binary_tree<Data> {
-    std::unordered_set<node_type> nodes;
+shared_binary_tree<Data>::shared_binary_tree(const std::vector<Data>& data) {
+    nodes.reserve(data.size()/2 + data.size()%2);
     using iter = typename std::unordered_set<node_type>::const_iterator;
     std::vector<iter> previous_layer;
 
     for (auto i = 0u; i < data.size() - 1; i += 2) {
-      auto new_node = nodes.emplace(data[i], data[i+1]).first;
-      previous_layer.push_back(new_node);
+      auto inserted = nodes.emplace(data[i], data[i+1]);
+      previous_layer.emplace_back(inserted.first);
     }
-    if (data.size() % 2 != 0) {
-      auto new_node = nodes.emplace(data.back()).first;
-      previous_layer.push_back(new_node);
+    if (data.size() % 2) {
+      auto inserted = nodes.emplace(data.back());
+      previous_layer.emplace_back(inserted.first);
     }
 
     while (previous_layer.size() > 1) {
       std::vector<iter> next_layer;
       for (auto i = 0u; i < previous_layer.size() - 1; i += 2) {
-        auto new_node = nodes.emplace(*previous_layer[i], *previous_layer[i+1]).first;
-        next_layer.push_back(new_node);
+        auto inserted = nodes.emplace(*previous_layer[i], *previous_layer[i+1]);
+        next_layer.push_back(inserted.first);
       }
-      if (previous_layer.size() % 2 != 0) {
-        auto new_node = nodes.emplace(*previous_layer.back()).first;
-        next_layer.push_back(new_node);
+      if (previous_layer.size() % 2) {
+        auto inserted = nodes.emplace(*previous_layer.back());
+        next_layer.push_back(inserted.first);
       }
       previous_layer = next_layer;
     }
 
-    auto root = pointer{*(previous_layer.front())};
-    return shared_binary_tree{root, nodes};
+    root = pointer{*(previous_layer.front())};
   }

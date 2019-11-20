@@ -8,19 +8,10 @@ LDLIBS=
 SRCS=compress.cpp src/dna.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
-all: compress
+all: clean compress
 
-compress: $(OBJS)
-	$(CXX) -o $@ $(OBJS) $(LDLIBS) $(LDFLAGS) $(CPPFLAGS)
-
-%: %.o
-	$(CXX) -o $@ $< $(LDFLAGS)
-
-%.o: %.cpp
-	$(CXX) -c -o $@ $< $(CPPFLAGS)
-
-%: %.cpp
-	$(CXX) -o $@ $< $(LDFLAGS)
+compress: $(SRCS)
+	$(CXX) -o $@ $(SRCS) $(LDLIBS) $(LDFLAGS) $(CPPFLAGS)
 
 clean:
-	$(RM) $(OBJS)
+	$(RM) $(subst .cpp, ,$(SRCS))
