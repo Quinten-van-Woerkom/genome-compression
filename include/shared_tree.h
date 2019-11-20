@@ -198,7 +198,7 @@ shared_tree<Data>::shared_tree(const std::vector<Data>& data) {
         auto inserted = nodes.emplace(*previous_layer.back());
         next_layer.push_back(inserted.first);
       }
-      previous_layer = next_layer;
+      previous_layer = std::move(next_layer);
     }
 
     root = pointer{*(previous_layer.front())};
