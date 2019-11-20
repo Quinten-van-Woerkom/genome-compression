@@ -18,7 +18,7 @@ int main(int argc, char* argv[]) {
   std::cout << "Compressing " << path << '\n';
 
   auto data = read_genome(path);
-  auto compressed = shared_binary_tree<dna>{data};
+  auto compressed = shared_tree<dna>{data};
 
   auto compressed_size = compressed.size()*sizeof(decltype(compressed)::node_type);
   auto uncompressed_size = compressed.length()*sizeof(decltype(compressed)::value_type);

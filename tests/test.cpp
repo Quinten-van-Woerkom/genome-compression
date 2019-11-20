@@ -11,7 +11,7 @@
 bool test_tree() {
   auto path = "data/chmpxx";
   auto data = read_genome(path);
-  auto compressed = shared_binary_tree<dna>{data};
+  auto compressed = shared_tree<dna>{data};
 
   // This could be much more efficient.
   for (auto i = 0ul; i < data.size(); ++i) {

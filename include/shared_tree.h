@@ -136,13 +136,13 @@ namespace std {
  *  Precondition: each node is assumed to exist only once.
  */
 template<typename Data>
-class shared_binary_tree {
+class shared_tree {
 public:
   using node_type = node<Data>;
   using value_type = Data;
   using pointer = typename node_type::pointer;
 
-  shared_binary_tree(const std::vector<Data>& data);
+  shared_tree(const std::vector<Data>& data);
 
   constexpr auto left_leaf() const -> Data { return root.get_node().left_leaf(); }
   constexpr auto right_leaf() const -> Data { return root.get_node().right_leaf(); }
@@ -174,7 +174,7 @@ private:
  *  subdivision for common subtree merging.
  */
 template<typename Data>
-shared_binary_tree<Data>::shared_binary_tree(const std::vector<Data>& data) {
+shared_tree<Data>::shared_tree(const std::vector<Data>& data) {
     nodes.reserve(data.size()/2 + data.size()%2);
     using iter = typename std::unordered_set<node_type>::const_iterator;
     std::vector<iter> previous_layer;
