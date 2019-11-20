@@ -139,6 +139,7 @@ template<typename Data>
 class shared_binary_tree {
 public:
   using node_type = node<Data>;
+  using value_type = Data;
   using pointer = typename node_type::pointer;
 
   shared_binary_tree(const std::vector<Data>& data);
