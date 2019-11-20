@@ -34,3 +34,6 @@
 
 #Jetbrains project file
 .idea
+
+#But do not exclude Makefile
+!Makefile
