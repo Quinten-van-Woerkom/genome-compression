@@ -30,6 +30,7 @@
 *.exe
 *.out
 *.app
+*.
 
 #Jetbrains project file
 .idea

@@ -22,3 +22,6 @@ clean:
 	$(RM) $(subst .cpp, ,$(SRCS))
 	$(RM) $(subst .cpp, ,$(MAIN))
 	$(RM) $(subst .cpp, ,$(TEST))
+	$(RM) $(subst .cpp,.o,$(SRCS))
+	$(RM) $(subst .cpp,.o,$(MAIN))
+	$(RM) $(subst .cpp,.o,$(TEST))
