@@ -5,13 +5,20 @@ CPPFLAGS=-Wall -std=c++17 -Iinclude
 LDFLAGS=-lstdc++fs
 LDLIBS=
 
-SRCS=compress.cpp src/dna.cpp
+MAIN=compress.cpp
+TEST=tests/test.cpp
+SRCS=src/dna.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
-all: clean compress
+all: compress test
 
-compress: $(SRCS)
-	$(CXX) -o $@ $(SRCS) $(LDLIBS) $(LDFLAGS) $(CPPFLAGS)
+test: $(SRCS) $(TEST)
+	$(CXX) -o $@ $(TEST) $(SRCS) $(LDLIBS) $(LDFLAGS) $(CPPFLAGS)
+
+compress: $(SRCS) $(MAIN)
+	$(CXX) -o $@ $(MAIN) $(SRCS) $(LDLIBS) $(LDFLAGS) $(CPPFLAGS)
 
 clean:
 	$(RM) $(subst .cpp, ,$(SRCS))
+	$(RM) $(subst .cpp, ,$(MAIN))
+	$(RM) $(subst .cpp, ,$(TEST))

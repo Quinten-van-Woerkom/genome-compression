@@ -28,6 +28,7 @@ public:
 
   auto hash() const noexcept -> std::size_t { return nucleotides.to_ulong(); }
   auto operator==(const dna& other) const noexcept -> bool { return nucleotides == other.nucleotides; }
+  auto operator!=(const dna& other) const noexcept -> bool { return nucleotides != other.nucleotides; }
 
 private:
   void set_nucleotide(std::size_t index, char nucleotide);

@@ -27,4 +27,6 @@ int main(int argc, char* argv[]) {
     << "Final size: " << compressed.size() << " nodes (" << compressed_size << " bytes)\n"
     << "Data length: " << compressed.length() << " elements (" << uncompressed_size << " bytes)\n"
     << "Compression ratio: " << double(compressed_size)/double(uncompressed_size) << '\n';
+
+  return 0;
 }
