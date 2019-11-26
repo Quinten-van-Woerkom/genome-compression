@@ -57,13 +57,8 @@ public:
 
   // Accessor
   constexpr auto operator[](std::size_t index) const -> Data {
-    if (index < left.size()) {
-      if (left.is_leaf()) return left_leaf();
-      else return left_node()[index];
-    } else {
-      if (right.is_leaf()) return right_leaf();
-      else return right_node()[index - left.size()];
-    }
+    if (index < left.size()) return left[index];
+    else return right[index - left.size()];
   }
 
   constexpr auto operator==(const node& other) const noexcept {
@@ -91,6 +86,13 @@ public:
 
     constexpr auto operator==(const pointer& other) const noexcept {
       return size_ == other.size_ && as_unsigned == other.as_unsigned;
+    }
+
+    // Accessor
+    constexpr auto operator[](std::size_t index) const -> Data {
+      assert(index < this->size());
+      if (this->is_leaf()) return this->get_leaf();
+      else return this->get_node()[index];
     }
 
     constexpr auto empty() const noexcept -> bool { return subnode == nullptr && !is_leaf(); }
