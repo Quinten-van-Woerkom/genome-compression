@@ -39,10 +39,8 @@ class node {
 public:
   class pointer;
 
-  node(const node& left, const node& right) : left{left}, right{right} {}
-  node(Data left, Data right) : left{left}, right{right} {}
-  node(const node& left) : left{left}, right{nullptr} {}
-  node(Data left) : left{left}, right{nullptr} {}
+  node(pointer left, pointer right) : left{left}, right{right} {}
+  node(pointer left) : left{left}, right{nullptr} {}
 
   // TODO: Add checks for empty children
   constexpr auto left_leaf() const -> Data { assert(left.is_leaf()); return left.get_leaf(); }
