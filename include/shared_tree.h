@@ -53,6 +53,14 @@ public:
 
   constexpr auto size() const noexcept -> std::size_t { return left.size() + right.size(); }
 
+  // For now, only mirror symmetry exists.
+  // In the future, more similarities might be added.
+  constexpr auto similarities(const node& other) const {
+    assert(*this == other);
+    if (left == other.right && right == other.left) return true;
+    else return false;
+  }
+
   // Accessor
   constexpr auto operator[](std::size_t index) const -> Data {
     if (index < left.size()) return left[index];
