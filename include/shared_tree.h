@@ -184,30 +184,29 @@ private:
 template<typename Data>
 shared_tree<Data>::shared_tree(const std::vector<Data>& data) {
     nodes.reserve(data.size()/2 + data.size()%2);
-    using iter = typename std::unordered_set<node_type>::const_iterator;
-    std::vector<iter> previous_layer;
+    std::vector<pointer> previous_layer;
 
     for (auto i = 0u; i < data.size() - 1; i += 2) {
       auto inserted = nodes.emplace(data[i], data[i+1]);
-      previous_layer.emplace_back(inserted.first);
+      previous_layer.emplace_back(*inserted.first);
     }
     if (data.size() % 2) {
       auto inserted = nodes.emplace(data.back());
-      previous_layer.emplace_back(inserted.first);
+      previous_layer.emplace_back(*inserted.first);
     }
 
     while (previous_layer.size() > 1) {
-      std::vector<iter> next_layer;
+      std::vector<pointer> next_layer;
       for (auto i = 0u; i < previous_layer.size() - 1; i += 2) {
-        auto inserted = nodes.emplace(*previous_layer[i], *previous_layer[i+1]);
-        next_layer.push_back(inserted.first);
+        auto inserted = nodes.emplace(previous_layer[i], previous_layer[i+1]);
+        next_layer.push_back(*inserted.first);
       }
       if (previous_layer.size() % 2) {
-        auto inserted = nodes.emplace(*previous_layer.back());
-        next_layer.push_back(inserted.first);
+        auto inserted = nodes.emplace(previous_layer.back());
+        next_layer.push_back(*inserted.first);
       }
       previous_layer = std::move(next_layer);
     }
 
-    root = pointer{*(previous_layer.front())};
+    root = pointer{previous_layer.front()};
   }
