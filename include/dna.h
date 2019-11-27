@@ -15,7 +15,7 @@ namespace fs = std::filesystem;
 
 // DNA strand of predetermined size
 class dna {
-  static constexpr std::size_t length = 1; // Length of a single strand
+  static constexpr std::size_t length = 32; // Length of a single strand
 public:
   dna(const std::string_view strand);
 
@@ -26,7 +26,7 @@ public:
 
   friend auto operator<<(std::ostream& os, const dna& dna) -> std::ostream&;
 
-  auto hash() const noexcept -> std::size_t { return nucleotides.to_ulong(); }
+  auto hash() const noexcept -> std::size_t { return std::hash<std::bitset<2*length>>{}(nucleotides); }
   auto operator==(const dna& other) const noexcept -> bool { return nucleotides == other.nucleotides; }
   auto operator!=(const dna& other) const noexcept -> bool { return nucleotides != other.nucleotides; }
 

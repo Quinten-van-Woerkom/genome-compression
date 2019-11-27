@@ -86,7 +86,7 @@ public:
     pointer() : pointer{nullptr} {}
     pointer(std::nullptr_t) : size_{0}, subnode{nullptr} {}  // Special construct to denote the absence of data
     pointer(const node& subnode) : size_{subnode.size()}, subnode{&subnode} {}
-    pointer(Data data) : size_{1}, data{data} {}
+    pointer(const Data& data) : size_{1}, data{&data} {}
 
     constexpr operator std::size_t() const noexcept { return detail::hash(as_unsigned, size_); }
 
@@ -105,7 +105,7 @@ public:
     constexpr auto size() const noexcept -> std::size_t { return size_; }
     constexpr auto is_leaf() const noexcept -> bool { return size_ == 1; }
     // TODO: Add checks for emptiness
-    constexpr auto get_leaf() const -> Data { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return data; }
+    constexpr auto get_leaf() const -> const Data& { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return *data; }
     constexpr auto get_node() const -> const node& { assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf."); return *subnode; }
 
     friend auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
@@ -120,7 +120,7 @@ public:
     
     union {
       const node* subnode;
-      Data data;
+      const Data* data;
       std::size_t as_unsigned;
     };
   };
@@ -167,6 +167,7 @@ public:
     if (root.is_leaf()) return root.get_leaf();
     else return root.get_node()[index];
   }
+  
   void print_unique() const {
     for (const auto& node : nodes)
         std::cout << node << '\n';
@@ -175,6 +176,7 @@ public:
 private:
   pointer root;
   std::unordered_set<node_type> nodes;
+  std::unordered_set<value_type> leaves;
 };
 
 /**
@@ -186,27 +188,26 @@ shared_tree<Data>::shared_tree(const std::vector<Data>& data) {
     nodes.reserve(data.size()/2 + data.size()%2);
     std::vector<pointer> previous_layer;
 
-    for (auto i = 0u; i < data.size() - 1; i += 2) {
-      auto inserted = nodes.emplace(data[i], data[i+1]);
-      previous_layer.emplace_back(*inserted.first);
-    }
-    if (data.size() % 2) {
-      auto inserted = nodes.emplace(data.back());
-      previous_layer.emplace_back(*inserted.first);
+    for (const auto& element : data) {
+      auto insertion = leaves.emplace(element);
+      auto& canonical_leaf = *(insertion.first);
+      previous_layer.emplace_back(canonical_leaf);
     }
 
-    while (previous_layer.size() > 1) {
+    do {
       std::vector<pointer> next_layer;
-      for (auto i = 0u; i < previous_layer.size() - 1; i += 2) {
-        auto inserted = nodes.emplace(previous_layer[i], previous_layer[i+1]);
-        next_layer.push_back(*inserted.first);
+      for (auto i = 0u; i < previous_layer.size() - 1; i += 2) {  
+        auto created_node = node_type{previous_layer[i], previous_layer[i+1]};
+        auto& canonical_node = *(nodes.emplace(created_node).first);
+        // auto mirrored = created_node.similarities(canonical_node);
+        next_layer.emplace_back(canonical_node);
       }
       if (previous_layer.size() % 2) {
         auto inserted = nodes.emplace(previous_layer.back());
         next_layer.push_back(*inserted.first);
       }
       previous_layer = std::move(next_layer);
-    }
+    } while (previous_layer.size() > 1);
 
     root = pointer{previous_layer.front()};
   }
