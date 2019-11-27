@@ -21,12 +21,12 @@ int main(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
 
   auto data = read_genome(path);
-  auto compressed = shared_tree<dna>{data};
+  auto compressed = shared_tree{data};
 
   auto end = std::chrono::high_resolution_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-  auto compressed_size = compressed.size()*sizeof(decltype(compressed)::node_type);
+  auto compressed_size = compressed.size()*sizeof(node);
   auto file_size = std::filesystem::file_size(path);
 
   std::cout << " Done!\n"
