@@ -82,9 +82,9 @@ public:
    */
   class pointer {
   public:
-    pointer(std::nullptr_t = nullptr) : size_{0}, leaf{true}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
-    pointer(const node& subnode) : size_{subnode.size()}, leaf{false}, subnode{&subnode} {}
-    pointer(const dna& data) : size_{1}, leaf{true}, data{&data} {}
+    pointer(std::nullptr_t = nullptr) : size_{1}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
+    pointer(const node& subnode) : size_{subnode.size()}, subnode{&subnode} {}
+    pointer(const dna& data) : size_{0}, data{&data} {}
 
     operator std::size_t() const noexcept { return detail::hash(reinterpret_cast<std::size_t>(void_pointer), size_); }
 
@@ -99,9 +99,9 @@ public:
       else return this->get_node()[index];
     }
 
-    auto empty() const noexcept -> bool { return size_ == 0; }
-    auto size() const noexcept -> std::size_t { return size_; }
-    auto is_leaf() const noexcept -> bool { return leaf; }
+    auto empty() const noexcept -> bool { return void_pointer == nullptr; }
+    auto size() const noexcept -> std::size_t { return size_ == 0 ? 1 : size_; }
+    auto is_leaf() const noexcept -> bool { return size_ == 0; }
     // TODO: Add checks for emptiness
     auto get_leaf() const -> const dna& { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return *data; }
     auto get_node() const -> const node& { assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf."); return *subnode; }
@@ -114,8 +114,7 @@ public:
 
   private:
     // TODO: Add annotations for similarity transforms
-    std::size_t size_;
-    bool leaf;
+    std::size_t size_;  // A value of 0 indicates a leaf node; actual size to outside world should still be 1 then
     
     union {
       const void* void_pointer;
