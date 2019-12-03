@@ -14,10 +14,16 @@ bool test_tree() {
   auto compressed = shared_tree{data};
 
   // This could be much more efficient.
+  auto errors = 0;
   for (auto i = 0ul; i < data.size(); ++i) {
-    if (data[i] != compressed[i]) return 1;
+    if (data[i] != compressed[i]) {
+      std::cerr << "Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
+        << "\tdata[i]\t\t= " << data[i] << '\n'
+        << "\tcompressed[i]\t= " << compressed[i] << '\n';
+      ++errors;
+    }
   }
-  return 0;
+  return errors;
 }
 
 int main(int argc, char* argv[]) {

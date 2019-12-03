@@ -15,7 +15,7 @@ namespace fs = std::filesystem;
 
 // DNA strand of predetermined size
 class dna {
-  static constexpr std::size_t length = 32; // Length of a single strand
+  static constexpr std::size_t length = 40; // Length of a single strand
 public:
   dna(const std::string_view strand);
 

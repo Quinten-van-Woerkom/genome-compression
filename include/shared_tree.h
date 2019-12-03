@@ -82,10 +82,9 @@ public:
    */
   class pointer {
   public:
-    pointer() : pointer{nullptr} {}
-    pointer(std::nullptr_t) : size_{0}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
-    pointer(const node& subnode) : size_{subnode.size()}, subnode{&subnode} {}
-    pointer(const dna& data) : size_{1}, data{&data} {}
+    pointer(std::nullptr_t = nullptr) : size_{0}, leaf{true}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
+    pointer(const node& subnode) : size_{subnode.size()}, leaf{false}, subnode{&subnode} {}
+    pointer(const dna& data) : size_{1}, leaf{true}, data{&data} {}
 
     operator std::size_t() const noexcept { return detail::hash(reinterpret_cast<std::size_t>(void_pointer), size_); }
 
@@ -100,25 +99,26 @@ public:
       else return this->get_node()[index];
     }
 
-    auto empty() const noexcept -> bool { return void_pointer == nullptr && !is_leaf(); }
+    auto empty() const noexcept -> bool { return size_ == 0; }
     auto size() const noexcept -> std::size_t { return size_; }
-    auto is_leaf() const noexcept -> bool { return size_ == 1; }
+    auto is_leaf() const noexcept -> bool { return leaf; }
     // TODO: Add checks for emptiness
     auto get_leaf() const -> const dna& { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return *data; }
     auto get_node() const -> const node& { assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf."); return *subnode; }
 
     friend auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
       if (p.empty()) return os << "empty";
-      else if (p.is_leaf()) return os << "leaf: " << p.data;
+      else if (p.is_leaf()) return os << "leaf: " << *p.data;
       else return os << "node: " << p.subnode;
     }
 
   private:
     // TODO: Add annotations for similarity transforms
     std::size_t size_;
+    bool leaf;
     
     union {
-      void* void_pointer;
+      const void* void_pointer;
       const node* subnode;
       const dna* data;
     };
@@ -137,7 +137,7 @@ namespace std {
 }
 
 /**
- *  Shared tree, where the manner of construction is not strictly given.
+ *  Genome, constructed as a balanced shared tree.
  *  Note that the tree itself is non-owning; rather, the nodes must be stored
  *  elsewhere to allow for canonicalisation of nodes.
  *  Precondition: each node is assumed to exist only once.
@@ -160,8 +160,7 @@ public:
   auto length() const -> std::size_t { return root.size(); }
 
   auto operator[](std::size_t index) const -> const dna& {
-    if (root.is_leaf()) return root.get_leaf();
-    else return root.get_node()[index];
+    return root[index];
   }
   
   void print_unique() const {
@@ -191,16 +190,18 @@ shared_tree::shared_tree(const std::vector<dna>& data) {
 
     while (previous_layer.size() > 1) {
       std::vector<pointer> next_layer;
-      for (auto i = 0u; i < previous_layer.size() - 1; i += 2) {  
+
+      for (auto i = 0u; i < previous_layer.size() - 1; i += 2) {
         auto created_node = node{previous_layer[i], previous_layer[i+1]};
         auto& canonical_node = *(nodes.emplace(created_node).first);
-        // auto mirrored = created_node.similarities(canonical_node);
         next_layer.emplace_back(canonical_node);
       }
       if (previous_layer.size() % 2) {
-        auto inserted = nodes.emplace(previous_layer.back());
-        next_layer.push_back(*inserted.first);
+        auto created_node = node{previous_layer.back()};
+        auto& canonical_node = *(nodes.emplace(created_node).first);
+        next_layer.push_back(canonical_node);
       }
+
       previous_layer = std::move(next_layer);
     }
 
