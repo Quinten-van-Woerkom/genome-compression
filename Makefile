@@ -8,12 +8,12 @@ LDLIBS=
 
 MAIN=compress.cpp
 TEST=tests/test.cpp
-SRCS=src/dna.cpp
+SRCS=src/dna.cpp src/file_reader.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
-all: compress test
+release: ADDED_CPPFLAGS=-O3
 
-force: clean compress test
+all release: compress test
 
 test: $(SRCS) $(TEST)
 	$(CXX) -o $@ $(TEST) $(SRCS) $(LDLIBS) $(LDFLAGS) $(CPPFLAGS) $(ADDED_CPPFLAGS)

@@ -10,6 +10,7 @@
 
 #include "dna.h"
 #include "shared_tree.h"
+#include "file_reader.h"
 
 int main(int argc, char* argv[]) {
   std::string path = "data/chmpxx";
@@ -21,6 +22,7 @@ int main(int argc, char* argv[]) {
   auto start = std::chrono::high_resolution_clock::now();
 
   auto data = read_genome(path);
+  // auto data = fasta_reader{path};
   auto compressed = shared_tree{data};
 
   auto end = std::chrono::high_resolution_clock::now();
