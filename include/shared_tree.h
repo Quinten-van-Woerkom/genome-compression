@@ -11,29 +11,6 @@
 
 #include "utility.h"
 
-namespace detail {
-/**
- *  Hash function for an arbitrary set of arguments.
- *  Requires only that each argument be convertible to std::size_t.
- */
-constexpr auto hash_impl() noexcept -> std::size_t {
-  return 0;
-}
-
-template <typename Arg, typename... Args>
-constexpr auto hash_impl(const Arg& arg, const Args& ... args) noexcept -> std::size_t {
-  constexpr auto scalar = (1 << (sizeof...(args) + 1)) + 1;
-  return scalar * arg + hash_impl(args...);
-}
-
-template <typename... Args> auto hash(const Args&... args) noexcept -> std::size_t {
-  if constexpr (sizeof...(args) == 0) return 0;
-  else {
-    return hash_impl(args...);
-  }
-}
-}
-
 /**
  *  Node in a non-owning tree. Children are either other nodes or leaf nodes,
  *  containing the actual data stored.
