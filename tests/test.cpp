@@ -2,11 +2,13 @@
  *  Unit tests for the implementation.
  */
 
+#include <array>
 #include <cassert>
 #include <iostream>
 
 #include "dna.h"
 #include "shared_tree.h"
+#include "utility.h"
 
 auto test_node() -> int {
   auto errors = 0;
@@ -45,12 +47,13 @@ auto test_tree() -> int {
     ++errors;
   }
 
-  // This could be much more efficient.
-  for (auto i = 0ul; i < data.size(); ++i) {
-    if (data[i] != compressed[i]) {
+  auto i = 0;
+  for (const auto& [d, c] : zip(data, compressed)) {
+    ++i;
+    if (d != c) {
       std::cerr << "Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
-        << "\tdata[i]\t\t= " << data[i] << '\n'
-        << "\tcompressed[i]\t= " << compressed[i] << '\n';
+        << "\tdata[i]\t\t= " << d << '\n'
+        << "\tcompressed[i]\t= " << c << '\n';
       ++errors;
     }
   }

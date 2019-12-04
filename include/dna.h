@@ -3,6 +3,8 @@
  *  grammar, which is implemented as a canonicalized binary tree.
  */
 
+#pragma once
+
 #include <array>
 #include <bitset>
 #include <filesystem>

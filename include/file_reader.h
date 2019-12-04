@@ -4,6 +4,8 @@
  *  loaded in memory.
  */
 
+#pragma once
+
 #include <fstream>
 #include <filesystem>
 #include <string_view>

@@ -3,9 +3,13 @@
  *  common subtree merging.
  */
 
+#pragma once
+
 #include <cassert>
 #include <unordered_set>
 #include <vector>
+
+#include "utility.h"
 
 namespace detail {
 /**
@@ -168,6 +172,41 @@ public:
         std::cout << node << '\n';
   }
 
+  class iterator {
+  public:
+    iterator(shared_tree& parent, std::size_t index = 0) : parent{parent}, index{index} {}
+    auto& operator*() { return parent[index]; }
+    auto& operator++() { ++index; return *this; }
+    auto operator++(int) { auto temp = *this; ++index; return temp; }
+    auto& operator--() { --index; return *this; }
+    auto operator--(int) { auto temp = *this; --index; return temp; }
+    auto operator!=(const iterator& other) { return &parent != &other.parent || index != other.index; }
+
+  private:
+    shared_tree& parent;
+    std::size_t index;
+  };
+
+  class const_iterator {
+  public:
+    const_iterator(const shared_tree& parent, std::size_t index = 0) : parent{parent}, index{index} {}
+    auto& operator*() { return parent[index]; }
+    auto& operator++() { ++index; return *this; }
+    auto operator++(int) { auto temp = *this; ++index; return temp; }
+    auto& operator--() { --index; return *this; }
+    auto operator--(int) { auto temp = *this; --index; return temp; }
+    auto operator!=(const const_iterator& other) { return &parent != &other.parent || index != other.index; }
+
+  private:
+    const shared_tree& parent;
+    std::size_t index;
+  };
+
+  auto begin() { return iterator{*this, 0}; }
+  auto end() { return iterator{*this, root.size()}; }
+  auto cbegin() { return const_iterator{*this, 0}; }
+  auto cend() { return const_iterator{*this, root.size()}; }
+
 private:
   pointer root;
   std::unordered_set<node> nodes;
@@ -194,11 +233,16 @@ shared_tree::shared_tree(Iterable& data) {
       std::vector<pointer> next_layer;
       next_layer.reserve(previous_layer.size()/2 + previous_layer.size()%2);
 
-      for (auto i = 0u; i < previous_layer.size() - 1; i += 2) {
-        auto created_node = node{previous_layer[i], previous_layer[i+1]};
+      for (const auto& [left, right] : pairwise(previous_layer)) {
+        auto created_node = node{left, right};
         auto& canonical_node = *(nodes.emplace(created_node).first);
         next_layer.emplace_back(canonical_node);
       }
+      // for (auto i = 0u; i < previous_layer.size() - 1; i += 2) {
+      //   auto created_node = node{previous_layer[i], previous_layer[i+1]};
+      //   auto& canonical_node = *(nodes.emplace(created_node).first);
+      //   next_layer.emplace_back(canonical_node);
+      // }
       if (previous_layer.size() % 2) {
         auto created_node = node{previous_layer.back()};
         auto& canonical_node = *(nodes.emplace(created_node).first);
