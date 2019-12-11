@@ -88,21 +88,6 @@ auto read_genome(const fs::path path) -> std::vector<dna> {
     exit(1);
   }
 
-  // auto file = std::ifstream{path, std::ios::binary};
-  // auto buffer = std::array<char, dna::size()>{};
-  // auto result = std::vector<dna>{};
-
-  // if (!file.is_open()) {
-  //   std::cerr << "Unable to open file, aborting...\n";
-  //   exit(1);
-  // }
-
-  // while (true) {
-  //   file.read(buffer.data(), buffer.size());
-  //   if (file.eof()) break;
-  //   result.emplace_back(std::string_view{buffer.data(), buffer.size()});
-  // }
-
   auto result = std::vector<dna>{};
   auto file = fasta_reader{path, 0xffff, dna::size()};
   for (const auto& element : file)

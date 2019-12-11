@@ -21,8 +21,8 @@ int main(int argc, char* argv[]) {
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  auto data = read_genome(path);
-  // auto data = fasta_reader{path};
+  // auto data = read_genome(path);
+  auto data = fasta_reader{path, 32678, dna::size()};
   auto compressed = shared_tree{data};
 
   auto end = std::chrono::high_resolution_clock::now();

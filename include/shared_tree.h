@@ -215,11 +215,6 @@ shared_tree::shared_tree(Iterable& data) {
         auto& canonical_node = *(nodes.emplace(created_node).first);
         next_layer.emplace_back(canonical_node);
       }
-      // for (auto i = 0u; i < previous_layer.size() - 1; i += 2) {
-      //   auto created_node = node{previous_layer[i], previous_layer[i+1]};
-      //   auto& canonical_node = *(nodes.emplace(created_node).first);
-      //   next_layer.emplace_back(canonical_node);
-      // }
       if (previous_layer.size() % 2) {
         auto created_node = node{previous_layer.back()};
         auto& canonical_node = *(nodes.emplace(created_node).first);

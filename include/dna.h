@@ -1,6 +1,6 @@
 /**
- *  For now, the sequence is stored in terms of references to a context-free
- *  grammar, which is implemented as a canonicalized binary tree.
+ *  For now, the sequence is stored in terms of references a canonicalized,
+ *  balanced binary tree.
  */
 
 #pragma once

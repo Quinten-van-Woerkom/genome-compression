@@ -21,6 +21,16 @@ public:
   auto current() -> std::string_view;
   auto character() const -> char { return current_buffer[index]; }
 
+  // Merely an upper bound, as headers are also considered.
+  auto size() -> std::size_t {
+    auto pos = file.tellg();
+    file.ignore( std::numeric_limits<std::streamsize>::max() );
+    auto length = file.gcount();
+    file.clear();
+    file.seekg(pos);
+    return length;
+  }
+
   class iterator {
     public:
       constexpr iterator(fasta_reader& parent) : parent{parent} {}
