@@ -8,6 +8,8 @@
 
 #include <fstream>
 #include <filesystem>
+#include <iomanip>
+#include <iostream>
 #include <string_view>
 #include <vector>
 
@@ -22,9 +24,12 @@ public:
   auto character() const -> char { return current_buffer[index]; }
 
   // Merely an upper bound, as headers are also considered.
+  // As each character is a single base pair, the number of base pairs is
+  // equivalent to the size of the file.
   auto size() -> std::size_t {
     auto pos = file.tellg();
-    file.ignore( std::numeric_limits<std::streamsize>::max() );
+    file.seekg(0);
+    file.ignore(std::numeric_limits<std::streamsize>::max());
     auto length = file.gcount();
     file.clear();
     file.seekg(pos);
@@ -33,11 +38,18 @@ public:
 
   class iterator {
     public:
-      constexpr iterator(fasta_reader& parent) : parent{parent} {}
+      iterator(fasta_reader& parent)
+        : parent{parent} {}
+
       auto operator*() const -> std::string_view { return parent.current(); }
       auto operator==(const iterator&) const -> bool { return parent.eof(); } // Hackish implementation but it works
       auto operator!=(const iterator&) const -> bool { return !parent.eof(); }
-      auto operator++() { parent.next(); return *this; }
+
+      auto operator++() {
+        parent.next();
+        return *this;
+      }
+
     private:
       fasta_reader& parent;
   };
@@ -54,4 +66,5 @@ private:
   std::ifstream file;
   bool swapped;
   std::size_t index;
+  bool verbose;
 };

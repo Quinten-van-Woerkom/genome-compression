@@ -6,8 +6,10 @@
 #include <cctype>
 #include <iostream>
 #include <string_view>
+#include <tuple>
 
 #include "file_reader.h"
+#include "utility.h"
 
 namespace fs = std::filesystem;
 
@@ -32,12 +34,24 @@ auto dna::operator[](std::size_t index) const -> char {
  */
 auto dna::nucleotide(std::size_t index) const -> char {
   assert(index < length);
-  auto nucleotide = nucleotides.test(2*index) | (nucleotides.test(2*index+1) << 1);
+  auto nucleotide = static_cast<nac>(nucleotides.to_ullong() >> index);
   switch (nucleotide) {
-    case 0b00: return 'A';
-    case 0b01: return 'C';
-    case 0b10: return 'T';
-    case 0b11: return 'G';
+    case nac::A: return 'A';
+    case nac::C: return 'C';
+    case nac::G: return 'G';
+    case nac::T: return 'T';
+    case nac::U: return 'U';
+    case nac::R: return 'R';
+    case nac::Y: return 'Y';
+    case nac::K: return 'K';
+    case nac::M: return 'M';
+    case nac::S: return 'S';
+    case nac::W: return 'W';
+    case nac::B: return 'B';
+    case nac::D: return 'D';
+    case nac::H: return 'H';
+    case nac::V: return 'V';
+    case nac::N: return 'N';
     default: return 'N';
   }
 }
@@ -49,25 +63,31 @@ auto dna::nucleotide(std::size_t index) const -> char {
 void dna::set_nucleotide(std::size_t index, char nucleotide) {
   assert(index < length);
 
-  auto set_internal = [&](auto index, bool low, bool high) {
-    nucleotides.set(2*index, low);
-    nucleotides.set(2*index+1, high);
-    assert(nucleotides.test(2*index) == low);
-    assert(nucleotides.test(2*index+1) == high);
+  auto set_internal = [&](auto index, auto nucleotide) {
+    auto bits = to_bits(static_cast<char>(nucleotide));
+    nucleotides.set(4*index, std::get<0>(bits));
+    nucleotides.set(4*index+1, std::get<1>(bits));
+    nucleotides.set(4*index+2, std::get<2>(bits));
+    nucleotides.set(4*index+3, std::get<3>(bits));
   };
 
   nucleotide = std::toupper(nucleotide);
 
   switch (nucleotide) {
-    case 'A': set_internal(index, false, false); break;
-    case 'C': set_internal(index, true, false); break;
-    case 'T': set_internal(index, false, true); break;
-    case 'G': set_internal(index, true, true); break;
-    // case '\n': case ' ': break; // We skip whitespace
-    // default: {
-    //   std::cerr << "Encountered unknown symbol, aborting...\n";
-    //   exit(1);
-    // }
+    case 'A': set_internal(index, nac::A); break;
+    case 'C': set_internal(index, nac::C); break;
+    case 'G': set_internal(index, nac::G); break;
+    case 'T': set_internal(index, nac::T); break;
+    case 'U': set_internal(index, nac::U); break;
+    case 'R': set_internal(index, nac::R); break;
+    case 'Y': set_internal(index, nac::Y); break;
+    case 'K': set_internal(index, nac::K); break;
+    case 'M': set_internal(index, nac::M); break;
+    case 'S': set_internal(index, nac::S); break;
+    case 'W': set_internal(index, nac::W); break;
+    case 'B': set_internal(index, nac::B); break;
+    case 'D': set_internal(index, nac::D); break;
+    case 'H': set_internal(index, nac::H); break;
     default: break; // We skip unknown symbols
   }
 }
@@ -89,7 +109,7 @@ auto read_genome(const fs::path path) -> std::vector<dna> {
   }
 
   auto result = std::vector<dna>{};
-  auto file = fasta_reader{path, 0xffff, dna::size()};
+  auto file = fasta_reader{path, 16384, dna::size()};
   for (const auto& element : file)
     result.emplace_back(element);
 

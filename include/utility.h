@@ -6,6 +6,7 @@
 #pragma once
 
 #include <iostream>
+#include <tuple>
 
 /**
  *  Range that iterates over two ranges simultaneously.
@@ -115,4 +116,27 @@ template <typename... Args> auto hash(const Args&... args) noexcept -> std::size
     return hash_impl(args...);
   }
 }
+}
+
+/**
+ *  Compose unsigned integers from bits, and decompose them in their bits.
+ *  Bits are order from least significant to most significant bit.
+ */
+constexpr auto from_bits(bool bit) noexcept -> unsigned long long {
+  return bit;
+}
+
+template<typename... T>
+constexpr auto from_bits(bool low_bit, T... bits) noexcept -> unsigned long long {
+  return low_bit | (from_bits(bits...) << 1);
+}
+
+template<typename T>
+constexpr auto to_bits(T value) noexcept -> std::array<bool, 8*sizeof(T)> {
+  std::array<bool, 8*sizeof(T)> result = {};
+  for (auto i = 0u; i < 8*sizeof(T); ++i) {
+    result[i] = value & 1;
+    value = value >> 1;
+  }
+  return result;
 }
