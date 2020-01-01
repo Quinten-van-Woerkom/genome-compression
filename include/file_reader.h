@@ -16,12 +16,15 @@
 class fasta_reader {
 public:
   fasta_reader(std::filesystem::path file, std::size_t buffer_size = 32768, std::size_t step_size = 1);
+  fasta_reader(const fasta_reader&) = delete;
+  fasta_reader(fasta_reader&&) = default;
 
   auto eof() const -> bool { return file.eof() && (index >= current_buffer.size()); }
-  void next();
-  void step();
-  auto current() -> std::string_view;
-  auto character() const -> char { return current_buffer[index]; }
+  void next_symbol();
+  void next_character();
+  void skip_comment();
+  auto current_symbol() -> std::string_view;
+  auto current_character() const -> char { return current_buffer[index]; }
 
   // Merely an upper bound, as headers are also considered.
   // As each character is a single base pair, the number of base pairs is
@@ -41,12 +44,12 @@ public:
       iterator(fasta_reader& parent)
         : parent{parent} {}
 
-      auto operator*() const -> std::string_view { return parent.current(); }
+      auto operator*() const -> std::string_view { return parent.current_symbol(); }
       auto operator==(const iterator&) const -> bool { return parent.eof(); } // Hackish implementation but it works
       auto operator!=(const iterator&) const -> bool { return !parent.eof(); }
 
       auto operator++() {
-        parent.next();
+        parent.next_symbol();
         return *this;
       }
 

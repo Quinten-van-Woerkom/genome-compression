@@ -40,22 +40,54 @@ auto test_node() -> int {
   return errors;
 }
 
+auto test_zip() -> int {
+  auto a = std::array{1, 2, 3};
+  auto b = std::array{4, 5, 6};
+  auto errors = 0;
+  auto index = 1;
+
+  for (auto [ae, be] : zip(a, b)) {
+    if (ae != index) {
+      std::cerr << "Element mismatch in a: " << ae << " != " << index << '\n';
+      ++errors;
+    }
+    if (be != index+3) {
+      std::cerr << "Element mismatch in b: " << be << " != " << index+3 << '\n';
+      ++errors;
+    }
+    ++index;
+
+    ae = 0;
+  }
+
+  for (const auto& ae : a) {
+    if (ae != 0) {
+      std::cerr << "Element mismatch in a: " << ae << " != " << 0 << '\n';
+      ++errors;
+    }
+  }
+  
+  if (!errors) std::cout << "<Zip> Finished without errors\n";
+
+  return errors;
+}
+
 auto test_file_reader() -> int {
-  auto path = "data/hehcmv";
+  auto path = "data/chmpxx";
   auto size = std::filesystem::file_size(path);
   auto buffered = fasta_reader{path, 32768, dna::size()};
-  auto direct = std::vector<std::array<char, dna::size()>>(size);
+  auto direct = std::vector<std::array<char, dna::size()>>(size/dna::size());
   auto file = std::ifstream{path, std::ios::binary};
   auto errors = 0;
 
-  file.read(reinterpret_cast<char*>(direct.data()), direct.size());
+  file.read(reinterpret_cast<char*>(direct.data()), size);
 
   auto i = 0;
-  for (const auto& [b, d] : zip(buffered, direct)) {
-    if (b != std::string_view{d.data(), d.size()}) {
+  for (const auto& b : buffered) {
+    if (b != std::string_view{direct[i].data(), direct[i].size()}) {
       std::cerr << "<File reader> Test failed: buffered[i] != direct[i] for i = " << i << " out of " << direct.size() - 1 << '\n'
         << "\tbuffered[i]\t= " << b << '\n'
-        << "\tdirect[i]\t= " << std::string_view{d.data(), d.size()} << '\n';
+        << "\tdirect[i]\t= " << std::string_view{direct[i].data(), direct[i].size()} << '\n';
       ++errors;
     }
     ++i;
@@ -66,8 +98,42 @@ auto test_file_reader() -> int {
   return errors;
 }
 
+auto test_tree() -> int {
+  auto left = dna::random();
+  auto right = dna::random();
+  auto single = dna::random();
+  auto left_node = node{left, right};
+  auto right_node = node{single};
+  auto root = node{left_node, right_node};
+  auto errors = 0;
+
+  if (root[0] != left) {
+    std::cerr << "<Tree> Test failed: root[0] != left\n"
+      << "\troot[0] =\t" << root[0] << '\n'
+      << "\tleft =\t" << left << '\n';
+    ++errors;
+  }
+
+  if (root[1] != right) {
+    std::cerr << "<Tree> Test failed: root[1] != right\n"
+      << "\troot[1] =\t" << root[1] << '\n'
+      << "\tright =\t" << right << '\n';
+    ++errors;
+  }
+
+  if (root[2] != single) {
+    std::cerr << "<Tree> Test failed: root[2] != single\n"
+      << "\troot[2] =\t" << root[2] << '\n'
+      << "\tsingle =\t" << single << '\n';
+    ++errors;
+  }
+
+  if (!errors) std::cout << "<Tree> Finished without errors\n";
+  return errors;
+}
+
 auto test_tree_layerwise() -> int {
-  auto path = "data/hehcmv";
+  auto path = "data/chmpxx";
   auto data = read_genome(path);
   auto compressed = shared_tree::create_balanced_layerwise(data);
   auto errors = 0;
@@ -95,7 +161,7 @@ auto test_tree_layerwise() -> int {
 }
 
 auto test_tree_pairwise() -> int {
-  auto path = "data/hehcmv";
+  auto path = "data/chmpxx";
   auto data = read_genome(path);
   auto compressed = shared_tree::create_balanced_pairwise(data);
   auto errors = 0;
@@ -123,22 +189,23 @@ auto test_tree_pairwise() -> int {
 }
 
 auto test_tree_factories() -> int {
-  auto path = "data/hehcmv";
+  auto path = "data/chmpxx";
   auto data = read_genome(path);
   auto layerwise = shared_tree::create_balanced_layerwise(data);
   auto pairwise = shared_tree::create_balanced_pairwise(data);
   auto errors = 0;
-
+  
   if (layerwise.length() != pairwise.length()) {
     std::cerr << "<Tree factories> Test failed: layerwise-constructed tree length (" << layerwise.length()
-      << ") does not match pairwise-constructed tree length (" << pairwise.length() << ")\n";
+      << ") does not match pairwise-constructed tree length (" << pairwise.length() << ")\n"
+      << "data size = " << data.size() << '\n';
     ++errors;
   }
 
   auto i = 0;
   for (const auto& [l, p] : zip(layerwise, pairwise)) {
     if (l != p) {
-      std::cerr << "<Tree factories> Test failed: layerwise[i] != pairwise[i] for i = " << i << " out of " << layerwise.size() - 1 << '\n'
+      std::cerr << "<Tree factories> Test failed: layerwise[i] != pairwise[i] for i = " << i << " out of " << layerwise.length() - 1 << '\n'
         << "\tlayerwise[i]\t= " << l << '\n'
         << "\tpairwise[i]\t= " << p << '\n';
       ++errors;
@@ -152,7 +219,7 @@ auto test_tree_factories() -> int {
 }
 
 int main(int argc, char* argv[]) {
-  auto errors = test_tree_factories() + test_tree_layerwise() + test_tree_pairwise() + test_file_reader() + test_node();
+  auto errors = test_zip() + test_tree() + test_tree_factories() + test_tree_layerwise() + test_tree_pairwise() + test_file_reader() + test_node();
   if (errors) std::cerr << "Not all tests passed\n";
   return errors;
 }

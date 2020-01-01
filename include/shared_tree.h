@@ -97,7 +97,7 @@ public:
   public:
     pointer(std::nullptr_t = nullptr) : size_{0}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
     pointer(const node& subnode) : size_{subnode.size()}, subnode{&subnode} {}
-    pointer(const dna& data) : size_{1}, data{&data} {}
+    pointer(const dna& data) : size_{0}, data{&data} {}
 
     operator std::size_t() const noexcept { return detail::hash(reinterpret_cast<std::size_t>(void_pointer), size_); }
 
@@ -113,8 +113,8 @@ public:
     }
 
     auto empty() const noexcept -> bool { return size_ == 0 && void_pointer == nullptr; }
-    auto size() const noexcept -> std::size_t { return size_; }
-    auto is_leaf() const noexcept -> bool { return size_ == 1; }
+    auto size() const noexcept -> std::size_t { return is_leaf() ? 1 : size_; }
+    auto is_leaf() const noexcept -> bool { return size_ == 0 && void_pointer != nullptr; }
     
     auto get_leaf() const -> const dna& { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return *data; }
     auto get_node() const -> const node& { assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf."); return *subnode; }
@@ -200,7 +200,7 @@ public:
     auto operator++(int) { auto temp = *this; ++index; return temp; }
     auto& operator--() { --index; return *this; }
     auto operator--(int) { auto temp = *this; --index; return temp; }
-    auto operator!=(const iterator& other) { return &parent != &other.parent || index != other.index; }
+    auto operator!=(const iterator& other) const { return &parent != &other.parent || index != other.index; }
 
   private:
     shared_tree& parent;
@@ -215,7 +215,7 @@ public:
     auto operator++(int) { auto temp = *this; ++index; return temp; }
     auto& operator--() { --index; return *this; }
     auto operator--(int) { auto temp = *this; --index; return temp; }
-    auto operator!=(const const_iterator& other) { return &parent != &other.parent || index != other.index; }
+    auto operator!=(const const_iterator& other) const { return &parent != &other.parent || index != other.index; }
 
   private:
     const shared_tree& parent;
@@ -263,6 +263,7 @@ auto shared_tree::create_balanced_layerwise(Iterable&& data) -> shared_tree {
       next_layer.emplace_back(canonical_node);
     }
     if (previous_layer.size() % 2) {
+      // std::cout << previous_layer.back() << '\n';
       auto created_node = node{previous_layer.back()};
       auto insertion = result.nodes.emplace(created_node);
       auto& canonical_node = *(insertion.first);
@@ -284,10 +285,10 @@ auto shared_tree::create_balanced_layerwise(Iterable&& data) -> shared_tree {
  */
 template<typename Iterable>
 auto shared_tree::create_balanced_pairwise(Iterable&& data) -> shared_tree {
-  auto result = shared_tree();
+  auto result = shared_tree{};
   auto nodes = std::vector<node>{};
   nodes.emplace_back();
-
+  
   for (const auto& element : data) {
     auto insertion = result.leaves.emplace(element);
     const auto& leaf = *insertion.first;
@@ -305,6 +306,7 @@ auto shared_tree::create_balanced_pairwise(Iterable&& data) -> shared_tree {
   }
 
   for (auto level = 0u; level < nodes.size()-1; ++level) {
+    if (nodes[level].empty()) continue; // We do not add empty nodes to the tree
     auto insertion = result.nodes.emplace(nodes[level]);
     const auto& node = *insertion.first;
     nodes[level+1].emplace(pointer{node});

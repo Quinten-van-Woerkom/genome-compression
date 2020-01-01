@@ -10,24 +10,25 @@
 
 /**
  *  Range that iterates over two ranges simultaneously.
+ *  TODO: Seems to be bugged for non-copyable objects, to be fixed.
  */
 namespace detail {
 template<typename Iterable1, typename Iterable2>
 class zip_class {
 public:
   zip_class(Iterable1 it1, Iterable2 it2)
-    : it1{it1}, it2{it2} {}
+    : it1{std::forward<Iterable1>(it1)}, it2{std::forward<Iterable2>(it2)} {}
 
   template<typename Iterator1, typename Iterator2>
   class iterator {
   public:
     iterator(Iterator1 it1, Iterator2 it2) : it1{it1}, it2{it2} {}
 
-    auto operator*() { return std::pair{*it1, *it2}; }
+    auto operator*() { return std::forward_as_tuple(*it1, *it2); }
     auto& operator++() { ++it1; ++it2; return *this; }
-    auto operator++(int) { auto temp = *this; ++it1; ++it2; return temp; }
+    auto operator++(int) { auto temp = *this; ++*this; return temp; }
     auto& operator--() { --it1; --it2; return *this; }
-    auto operator--(int) { auto temp = *this; --it1; --it2; return temp; }
+    auto operator--(int) { auto temp = *this; --*this; return temp; }
     auto operator!=(const iterator& other) { return it1 != other.it1 && it2 != other.it2; } // Stop iteration at first end
 
   private:
@@ -47,10 +48,9 @@ private:
 }
 
 template<typename Iterable1, typename Iterable2>
-auto zip(Iterable1&& it1, Iterable2&& it2) -> detail::zip_class<Iterable1, Iterable2> {
+auto zip(Iterable1&& it1, Iterable2&& it2) -> detail::zip_class<Iterable1&&, Iterable2&&> {
   return {std::forward<Iterable1>(it1), std::forward<Iterable2>(it2)};
 }
-
 
 /**
  *  Range that iterates over a sequence in pairs.
@@ -66,7 +66,7 @@ public:
   public:
     iterator(Iterator left, Iterator right) : left{left}, right{right} {}
 
-    auto operator*() { return std::pair{*left, *right}; }
+    auto operator*() { return std::forward_as_tuple(*left, *right); }
     auto& operator++() { ++left; ++left; ++right; ++right; return *this; }
     auto operator++(int) { auto temp = *this; ++left; ++left; ++right; ++right; return temp; }
     auto& operator--() { --left; --left; --right; --right; return *this; }

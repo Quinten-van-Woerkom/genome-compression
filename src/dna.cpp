@@ -18,6 +18,7 @@ dna::dna(const std::string_view strand) {
   for (auto i = 0u; i < length; ++i) {
     set_nucleotide(i, strand[i]);
   }
+  // std::cout << *this << '\n';
 }
 
 /**
@@ -34,7 +35,7 @@ auto dna::operator[](std::size_t index) const -> char {
  */
 auto dna::nucleotide(std::size_t index) const -> char {
   assert(index < length);
-  auto nucleotide = static_cast<nac>(nucleotides.to_ullong() >> index);
+  auto nucleotide = static_cast<nac>(from_bits(nucleotides[4*index], nucleotides[4*index+1], nucleotides[4*index+2], nucleotides[4*index+3]));
   switch (nucleotide) {
     case nac::A: return 'A';
     case nac::C: return 'C';
