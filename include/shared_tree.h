@@ -167,12 +167,6 @@ public:
   {}
 
   template<typename Iterable>
-  static auto create_balanced_layerwise(Iterable&& data) -> shared_tree;
-
-  template<typename Iterable>
-  static auto create_balanced_pairwise(Iterable&& data) -> shared_tree;
-
-  template<typename Iterable>
   static auto create_balanced(Iterable&& data) -> shared_tree;
 
   auto left_leaf() const -> const dna& { return root.get_node().left_leaf(); }
@@ -235,89 +229,6 @@ private:
   std::unordered_set<node> nodes;
   std::unordered_set<dna> leaves;
 };
-
-/**
- *  Constructs a shared binary tree from a vector of data, using spatial
- *  subdivision for common subtree merging.
- *  Reduces the data into nodes layer-by-layer; this requires repeated linear
- *  traversal of data, which is fast but requires a lot of memory.
- */
-template<typename Iterable>
-auto shared_tree::create_balanced_layerwise(Iterable&& data) -> shared_tree {
-  auto result = shared_tree{};
-  result.nodes.reserve(data.size()/2 + data.size()%2);
-  std::vector<pointer> previous_layer;
-  previous_layer.reserve(data.size()/2 + data.size()%2);
-
-  for (const auto& element : data) {
-    auto insertion = result.leaves.emplace(element);
-    auto& canonical_leaf = *(insertion.first);
-    previous_layer.emplace_back(canonical_leaf);
-  }
-  
-  while (previous_layer.size() > 1) {
-    std::vector<pointer> next_layer;
-    next_layer.reserve(previous_layer.size()/2 + previous_layer.size()%2);
-
-    for (const auto& [left, right] : pairwise(previous_layer)) {
-      auto created_node = node{left, right};
-      auto insertion = result.nodes.emplace(created_node);
-      auto& canonical_node = *(insertion.first);
-      next_layer.emplace_back(canonical_node);
-    }
-    if (previous_layer.size() % 2) {
-      // std::cout << previous_layer.back() << '\n';
-      auto created_node = node{previous_layer.back()};
-      auto insertion = result.nodes.emplace(created_node);
-      auto& canonical_node = *(insertion.first);
-      next_layer.emplace_back(canonical_node);
-    }
-
-    previous_layer = std::move(next_layer);
-  }
-
-  result.root = pointer{previous_layer.front()};
-  return result;
-}
-
-/**
- *  Constructs a shared binary tree from a vector of data, using spatial
- *  subdivision for common subtree merging.
- *  Reduces the data into nodes pair-by-pair; this reduces memory requirements
- *  and allows for a single traversal of the original dataset to be sufficient.
- */
-template<typename Iterable>
-auto shared_tree::create_balanced_pairwise(Iterable&& data) -> shared_tree {
-  auto result = shared_tree{};
-  auto nodes = std::vector<node>{};
-  nodes.emplace_back();
-  
-  for (const auto& element : data) {
-    auto insertion = result.leaves.emplace(element);
-    const auto& leaf = *insertion.first;
-    nodes[0].emplace(leaf);
-    
-    for (auto level = 0u; level < nodes.size(); ++level) {
-      if (nodes[level].full()) {
-        auto insertion = result.nodes.emplace(nodes[level]);
-        const auto& node = *insertion.first;
-        if (level+1 == nodes.size()) nodes.emplace_back(pointer{node});
-        else nodes[level+1].emplace(pointer{node});
-        nodes[level].clear();
-      }
-    }
-  }
-
-  for (auto level = 0u; level < nodes.size()-1; ++level) {
-    if (nodes[level].empty()) continue; // We do not add empty nodes to the tree
-    auto insertion = result.nodes.emplace(nodes[level]);
-    const auto& node = *insertion.first;
-    nodes[level+1].emplace(pointer{node});
-  }
-
-  result.root = nodes.back();
-  return result;
-}
 
 /**
  *  Constructs a shared binary tree from a vector of data, using spatial
