@@ -346,11 +346,9 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
   next_layer.reserve(reserve_space);
 
   for (const auto& segment : chunks(data, segment_size)) {
-    std::cout << '.' << std::flush;
-
     for (const auto& element : segment) {
       auto insertion = result.leaves.emplace(element);
-      if (!insertion.second) ++duplicates;
+      // if (!insertion.second) ++duplicates;
       auto& canonical_leaf = *(insertion.first);
       previous_layer.emplace_back(canonical_leaf);
     }
@@ -366,7 +364,7 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
       if (previous_layer.size() % 2) {
         auto created_node = node{previous_layer.back()};
         auto insertion = result.nodes.emplace(created_node);
-        if (!insertion.second) ++duplicates;
+        // if (!insertion.second) ++duplicates;
         auto& canonical_node = *(insertion.first);
         next_layer.emplace_back(canonical_node);
       }
@@ -376,7 +374,6 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
     }
     segments.emplace_back(previous_layer.front());
   }
-  std::cout << '\n';
 
   while (segments.size() > 1) {
       std::vector<pointer> next_layer;
@@ -385,14 +382,14 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
       for (const auto& [left, right] : pairwise(segments)) {
         auto created_node = node{left, right};
         auto insertion = result.nodes.emplace(created_node);
-        if (!insertion.second) ++duplicates;
+        // if (!insertion.second) ++duplicates;
         auto& canonical_node = *(insertion.first);
         next_layer.emplace_back(canonical_node);
       }
       if (segments.size() % 2) {
         auto created_node = node{segments.back()};
         auto insertion = result.nodes.emplace(created_node);
-        if (!insertion.second) ++duplicates;
+        // if (!insertion.second) ++duplicates;
         auto& canonical_node = *(insertion.first);
         next_layer.emplace_back(canonical_node);
       }
@@ -401,7 +398,7 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
       next_layer.clear();
     }
 
-  std::cout << "Duplicates: " << duplicates << '\n';
+  // std::cout << "Duplicates: " << duplicates << '\n';
   result.root = pointer{segments.front()};
   return result;
 }

@@ -37,7 +37,6 @@ void fasta_reader::next_symbol() {
  */
 void fasta_reader::load_buffer() {
   auto position = 0lu;
-  // auto line = std::string_view{};
 
   while (position < buffer.size()-1) {
     file.clear();
@@ -46,26 +45,13 @@ void fasta_reader::load_buffer() {
     file.getline(&buffer[position], buffer.size() - position);
 
     // When a newline is found: failbit == false, actual line size = gcount() - 1
-    // When the buffer end is reached: failbit == true, actual line size = gcount()    
+    // When the buffer end is reached: failbit == true, actual line size = gcount()
     const unsigned long size = file.fail() ? file.gcount() : file.gcount() - 1;
     position += size;
-    // line = std::string_view{&buffer[position], size};
-
-    // We skip lines that start with '>' or are empty. This is achieved by
-    // reading over them again by not incrementing the position indicator.
-    // if (line[0] != '>' && !line.empty())
-    //   position += line.size();
-    // else
-    //   std::cout << "Skipping comment (position " << position << '/' << buffer.size() - 2 << "): " << line << '\n';
-
-    // // If a comment coincides with the end of a buffer, it is not skipped in
-    // // its entirety, so we skip some more.
-    // if (line[0] == '>' && file.fail()) {
-    //   std::cout << "Skipping wrapping comment\n";
-    // }
 
     if (file.eof()) {
       buffer.resize(position);
+      index = 0;
       return;
     }
   }
