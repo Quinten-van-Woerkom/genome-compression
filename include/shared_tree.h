@@ -204,20 +204,7 @@ public:
     std::size_t index;
   };
 
-  class const_iterator {
-  public:
-    const_iterator(const shared_tree& parent, std::size_t index = 0) : parent{parent}, index{index} {}
-    auto& operator*() { return parent[index]; }
-    auto& operator++() { ++index; return *this; }
-    auto operator++(int) { auto temp = *this; ++index; return temp; }
-    auto& operator--() { --index; return *this; }
-    auto operator--(int) { auto temp = *this; --index; return temp; }
-    auto operator!=(const const_iterator& other) const { return &parent != &other.parent || index != other.index; }
-
-  private:
-    const shared_tree& parent;
-    std::size_t index;
-  };
+  using const_iterator = iterator;
 
   auto begin() { return iterator{*this, 0}; }
   auto end() { return iterator{*this, root.size()}; }

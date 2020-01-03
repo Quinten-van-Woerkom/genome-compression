@@ -152,42 +152,14 @@ auto test_tree() -> int {
   return errors;
 }
 
-auto test_tree_layerwise() -> int {
-  auto path = "data/chmpxx";
-  auto data = read_genome(path);
-  auto compressed = shared_tree::create_balanced_layerwise(data);
-  auto errors = 0;
-
-  if (data.size() != compressed.length()) {
-    std::cerr << "<Tree layerwise> Test failed: raw data size (" << data.size()
-      << ") does not match compressed data size (" << compressed.length() << ")\n";
-    ++errors;
-  }
-
-  auto i = 0;
-  for (const auto& [d, c] : zip(data, compressed)) {
-    if (d != c) {
-      std::cerr << "<Tree layerwise> Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
-        << "\tdata[i]\t\t= " << d << '\n'
-        << "\tcompressed[i]\t= " << c << '\n';
-      ++errors;
-    }
-    ++i;
-  }
-
-  if (!errors) std::cout << "<Tree layerwise> Finished without errors\n";
-
-  return errors;
-}
-
-auto test_tree_hybrid() -> int {
+auto test_tree_factory() -> int {
   auto path = "data/chmpxx";
   auto data = read_genome(path);
   auto compressed = shared_tree::create_balanced(data);
   auto errors = 0;
 
   if (data.size() != compressed.length()) {
-    std::cerr << "<Tree hybrid> Test failed: raw data size (" << data.size()
+    std::cerr << "<Tree factory> Test failed: raw data size (" << data.size()
       << ") does not match compressed data size (" << compressed.length() << ")\n";
     ++errors;
   }
@@ -195,7 +167,7 @@ auto test_tree_hybrid() -> int {
   auto i = 0;
   for (const auto& [d, c] : zip(data, compressed)) {
     if (d != c) {
-      std::cerr << "<Tree hybrid> Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
+      std::cerr << "<Tree factory> Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
         << "\tdata[i]\t\t= " << d << '\n'
         << "\tcompressed[i]\t= " << c << '\n';
       ++errors;
@@ -203,71 +175,13 @@ auto test_tree_hybrid() -> int {
     ++i;
   }
 
-  if (!errors) std::cout << "<Tree hybrid> Finished without errors\n";
-
-  return errors;
-}
-
-auto test_tree_pairwise() -> int {
-  auto path = "data/chmpxx";
-  auto data = read_genome(path);
-  auto compressed = shared_tree::create_balanced_pairwise(data);
-  auto errors = 0;
-
-  if (data.size() != compressed.length()) {
-    std::cerr << "<Tree pairwise> Test failed: raw data size (" << data.size()
-      << ") does not match compressed data size (" << compressed.length() << ")\n";
-    ++errors;
-  }
-
-  auto i = 0;
-  for (const auto& [d, c] : zip(data, compressed)) {
-    if (d != c) {
-      std::cerr << "<Tree pairwise> Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
-        << "\tdata[i]\t\t= " << d << '\n'
-        << "\tcompressed[i]\t= " << c << '\n';
-      ++errors;
-    }
-    ++i;
-  }
-
-  if (!errors) std::cout << "<Tree pairwise> Finished without errors\n";
-
-  return errors;
-}
-
-auto test_tree_factories() -> int {
-  auto path = "data/chmpxx";
-  auto data = read_genome(path);
-  auto layerwise = shared_tree::create_balanced_layerwise(data);
-  auto pairwise = shared_tree::create_balanced_pairwise(data);
-  auto errors = 0;
-  
-  if (layerwise.length() != pairwise.length()) {
-    std::cerr << "<Tree factories> Test failed: layerwise-constructed tree length (" << layerwise.length()
-      << ") does not match pairwise-constructed tree length (" << pairwise.length() << ")\n"
-      << "data size = " << data.size() << '\n';
-    ++errors;
-  }
-
-  auto i = 0;
-  for (const auto& [l, p] : zip(layerwise, pairwise)) {
-    if (l != p) {
-      std::cerr << "<Tree factories> Test failed: layerwise[i] != pairwise[i] for i = " << i << " out of " << layerwise.length() - 1 << '\n'
-        << "\tlayerwise[i]\t= " << l << '\n'
-        << "\tpairwise[i]\t= " << p << '\n';
-      ++errors;
-    }
-    ++i;
-  }
-
-  if (!errors) std::cout << "<Tree factories> Finished without errors\n";
+  if (!errors) std::cout << "<Tree factory> Finished without errors\n";
 
   return errors;
 }
 
 int main(int argc, char* argv[]) {
-  auto errors = test_zip() + test_chunks() + test_file_reader() + test_node() + test_tree() + test_tree_layerwise() + test_tree_pairwise() + test_tree_hybrid() + test_tree_factories();
+  auto errors = test_zip() + test_chunks() + test_file_reader() + test_node() + test_tree() + test_tree_factory();
   if (errors) std::cerr << "Not all tests passed\n";
   return errors;
 }
