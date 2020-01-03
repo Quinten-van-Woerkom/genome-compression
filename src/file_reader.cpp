@@ -46,12 +46,12 @@ void fasta_reader::load_buffer() {
 
     // When a newline is found: failbit == false, actual line size = gcount() - 1
     // When the buffer end is reached: failbit == true, actual line size = gcount()
-    const unsigned long size = file.fail() ? file.gcount() : file.gcount() - 1;
+    const auto size = file.fail() ? file.gcount() : file.gcount() - 1;
     position += size;
 
     if (file.eof()) {
       buffer.resize(position);
-      index = 0;
+      end_of_file = true;
       return;
     }
   }

@@ -30,7 +30,9 @@
 *.exe
 *.out
 *.app
-*.
+test
+compress
+local_alignment
 
 #Jetbrains project file
 .idea

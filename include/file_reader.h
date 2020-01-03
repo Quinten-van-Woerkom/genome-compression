@@ -20,7 +20,8 @@ public:
   fasta_reader(const fasta_reader&) = delete;
   fasta_reader(fasta_reader&&) = default;
 
-  auto eof() const -> bool { return file.eof() && index >= (buffer.size()-1); }
+  // auto eof() const -> bool { return file.eof() && index >= (buffer.size()-1); }
+  auto eof() const -> bool { return end_of_file; }
   auto current_symbol() -> std::string_view { return {buffer.data() + index, step_size}; }
   void next_symbol();
   void load_buffer();
@@ -66,5 +67,5 @@ private:
   std::ifstream file;
   std::size_t index;
   std::size_t step_size;
-  bool wrapped_comment = false;
+  bool end_of_file = false;
 };
