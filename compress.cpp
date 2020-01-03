@@ -17,13 +17,13 @@ int main(int argc, char* argv[]) {
   if (argc > 1) {
       path = argv[1];
   }
-  std::cout << "Compressing " << path << "... ";
+  std::cout << "Compressing " << path << "...\n";
   std::cout.flush();
 
   auto start = std::chrono::high_resolution_clock::now();
 
-  auto data = fasta_reader{path, 32768, dna::size()};
-  auto compressed = shared_tree::create_balanced_pairwise(data);
+  auto data = fasta_reader{path, dna::size()};
+  auto compressed = shared_tree::create_balanced(data);
 
 
   auto end = std::chrono::high_resolution_clock::now();
@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
   auto compressed_size = compressed.size()*sizeof(node);
   auto file_size = std::filesystem::file_size(path);
 
-  std::cout << " Done!\n"
+  std::cout << "Done!\n"
     << "Number of data units: " << compressed.length() << '\n'
     << "Number of base pairs: " << compressed.length()*dna::size() << '\n'
     << "File size: " << file_size << " bytes\n"

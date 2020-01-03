@@ -18,7 +18,6 @@ dna::dna(const std::string_view strand) {
   for (auto i = 0u; i < length; ++i) {
     set_nucleotide(i, strand[i]);
   }
-  // std::cout << *this << '\n';
 }
 
 /**
@@ -65,7 +64,7 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
   assert(index < length);
 
   auto set_internal = [&](auto index, auto nucleotide) {
-    auto bits = to_bits(static_cast<char>(nucleotide));
+    auto bits = to_bits(static_cast<unsigned char>(nucleotide));
     nucleotides.set(4*index, std::get<0>(bits));
     nucleotides.set(4*index+1, std::get<1>(bits));
     nucleotides.set(4*index+2, std::get<2>(bits));
@@ -89,7 +88,11 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
     case 'B': set_internal(index, nac::B); break;
     case 'D': set_internal(index, nac::D); break;
     case 'H': set_internal(index, nac::H); break;
-    default: break; // We skip unknown symbols
+    case 'N': set_internal(index, nac::N); break;
+    default: {
+      std::cerr << "Encountered unknown symbol: " << nucleotide << " (ASCII code " << static_cast<int>(nucleotide) << ")\n"; // We skip unknown symbols
+      exit(1);
+    }
   }
 }
 
@@ -110,7 +113,7 @@ auto read_genome(const fs::path path) -> std::vector<dna> {
   }
 
   auto result = std::vector<dna>{};
-  auto file = fasta_reader{path, 16384, dna::size()};
+  auto file = fasta_reader{path, dna::size()};
   for (const auto& element : file)
     result.emplace_back(element);
 

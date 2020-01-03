@@ -172,6 +172,9 @@ public:
   template<typename Iterable>
   static auto create_balanced_pairwise(Iterable&& data) -> shared_tree;
 
+  template<typename Iterable>
+  static auto create_balanced(Iterable&& data) -> shared_tree;
+
   auto left_leaf() const -> const dna& { return root.get_node().left_leaf(); }
   auto right_leaf() const -> const dna& { return root.get_node().right_leaf(); }
   auto left_node() const -> const node& { return root.get_node().left_node(); }
@@ -313,5 +316,92 @@ auto shared_tree::create_balanced_pairwise(Iterable&& data) -> shared_tree {
   }
 
   result.root = nodes.back();
+  return result;
+}
+
+/**
+ *  Constructs a shared binary tree from a vector of data, using spatial
+ *  subdivision for common subtree merging.
+ *  Reduces the data into nodes layer-by-layer, reducing each layer in segments
+ *  that fit in memory.
+ */
+template<typename Iterable>
+auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
+  auto result = shared_tree{};
+  constexpr auto segment_size = (1u<<25);
+  auto duplicates = 0;
+
+  std::vector<pointer> segments;
+  std::vector<pointer> previous_layer;
+  std::vector<pointer> next_layer;
+
+  auto size = data.size();
+  auto segment_space = size / segment_size;
+  auto data_space = segment_size/2 + segment_size%2;
+  auto reserve_space = segment_space > data_space ? segment_space : data_space;
+  // std::cout << "Reserving space: " << reserve_space << '\n';
+
+  segments.reserve(reserve_space);
+  previous_layer.reserve(reserve_space);
+  next_layer.reserve(reserve_space);
+
+  for (const auto& segment : chunks(data, segment_size)) {
+    std::cout << '.' << std::flush;
+
+    for (const auto& element : segment) {
+      auto insertion = result.leaves.emplace(element);
+      if (!insertion.second) ++duplicates;
+      auto& canonical_leaf = *(insertion.first);
+      previous_layer.emplace_back(canonical_leaf);
+    }
+    
+    while (previous_layer.size() > 1) {
+      for (const auto& [left, right] : pairwise(previous_layer)) {
+        auto created_node = node{left, right};
+        auto insertion = result.nodes.emplace(created_node);
+        if (!insertion.second) ++duplicates;
+        auto& canonical_node = *(insertion.first);
+        next_layer.emplace_back(canonical_node);
+      }
+      if (previous_layer.size() % 2) {
+        auto created_node = node{previous_layer.back()};
+        auto insertion = result.nodes.emplace(created_node);
+        if (!insertion.second) ++duplicates;
+        auto& canonical_node = *(insertion.first);
+        next_layer.emplace_back(canonical_node);
+      }
+
+      std::swap(previous_layer, next_layer);
+      next_layer.clear();
+    }
+    segments.emplace_back(previous_layer.front());
+  }
+  std::cout << '\n';
+
+  while (segments.size() > 1) {
+      std::vector<pointer> next_layer;
+      next_layer.reserve(segments.size()/2 + segments.size()%2);
+
+      for (const auto& [left, right] : pairwise(segments)) {
+        auto created_node = node{left, right};
+        auto insertion = result.nodes.emplace(created_node);
+        if (!insertion.second) ++duplicates;
+        auto& canonical_node = *(insertion.first);
+        next_layer.emplace_back(canonical_node);
+      }
+      if (segments.size() % 2) {
+        auto created_node = node{segments.back()};
+        auto insertion = result.nodes.emplace(created_node);
+        if (!insertion.second) ++duplicates;
+        auto& canonical_node = *(insertion.first);
+        next_layer.emplace_back(canonical_node);
+      }
+
+      std::swap(segments, next_layer);
+      next_layer.clear();
+    }
+
+  std::cout << "Duplicates: " << duplicates << '\n';
+  result.root = pointer{segments.front()};
   return result;
 }

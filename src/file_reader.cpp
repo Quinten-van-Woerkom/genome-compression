@@ -6,50 +6,68 @@
 
 #include "file_reader.h"
 
+#include <cctype>
 #include <iostream>
+#include <limits>
 
 namespace fs = std::filesystem;
 
-fasta_reader::fasta_reader(fs::path file, std::size_t buffer_size, std::size_t step_size)
-  : subbuffer(step_size), current_buffer(buffer_size), previous_buffer(buffer_size),
-    file{file, std::ios::binary}, swapped{false}, index{0} {
-  if (!this->file.is_open()) {
+fasta_reader::fasta_reader(fs::path path, std::size_t step_size, std::size_t buffer_size)
+  : file{path}, index{0}, step_size{step_size} {
+  if (!file.is_open()) {
     std::cerr << "Unable to open file, aborting...\n";
     exit(1);
   }
-
-  this->file.read(current_buffer.data(), current_buffer.size());
-  this->next_symbol();
+  buffer.resize(buffer_size - buffer_size%step_size + 1);
+  load_buffer();
 }
 
+/**
+ *  Advances the reader towards the next meaningful FASTA symbol.
+ */
 void fasta_reader::next_symbol() {
-  swapped = false;
-  index += subbuffer.size();
-  for (auto i = 0u; i < subbuffer.size(); ++i) {
-    next_character();
-    if (current_character() == '>') skip_comment();
+  index += step_size;
+  if (index >= buffer.size()-1) {
+    load_buffer();
   }
 }
 
-void fasta_reader::next_character() {
-  if (index >= current_buffer.size()) {
-    swapped = true;
-    std::swap(previous_buffer, current_buffer);
-    file.read(current_buffer.data(), current_buffer.size());
-    if (file.eof()) current_buffer.resize(file.gcount());
-    index -= previous_buffer.size();
+/**
+ *  Loads the next data in the FASTA file into the current buffer.
+ */
+void fasta_reader::load_buffer() {
+  auto position = 0lu;
+  // auto line = std::string_view{};
+
+  while (position < buffer.size()-1) {
+    file.clear();
+    if (file.peek() == '>' || file.peek() == '\n')
+      file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    file.getline(&buffer[position], buffer.size() - position);
+
+    // When a newline is found: failbit == false, actual line size = gcount() - 1
+    // When the buffer end is reached: failbit == true, actual line size = gcount()    
+    const unsigned long size = file.fail() ? file.gcount() : file.gcount() - 1;
+    position += size;
+    // line = std::string_view{&buffer[position], size};
+
+    // We skip lines that start with '>' or are empty. This is achieved by
+    // reading over them again by not incrementing the position indicator.
+    // if (line[0] != '>' && !line.empty())
+    //   position += line.size();
+    // else
+    //   std::cout << "Skipping comment (position " << position << '/' << buffer.size() - 2 << "): " << line << '\n';
+
+    // // If a comment coincides with the end of a buffer, it is not skipped in
+    // // its entirety, so we skip some more.
+    // if (line[0] == '>' && file.fail()) {
+    //   std::cout << "Skipping wrapping comment\n";
+    // }
+
+    if (file.eof()) {
+      buffer.resize(position);
+      return;
+    }
   }
-}
-
-void fasta_reader::skip_comment() {
-  do {
-    next_character();
-  } while (current_character() != '\n' || current_character() == '>');
-}
-
-auto fasta_reader::current_symbol() -> std::string_view {
-  if (!swapped) return std::string_view{&current_buffer[index-subbuffer.size()], subbuffer.size()};
-  std::copy(&previous_buffer[previous_buffer.size() - subbuffer.size() + index], previous_buffer.data() + previous_buffer.size(), subbuffer.data());
-  std::copy(&current_buffer[0], &current_buffer[index], &subbuffer[subbuffer.size() - index]);
-  return std::string_view{subbuffer.data(), subbuffer.size()};
+  index = 0;
 }

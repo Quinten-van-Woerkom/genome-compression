@@ -72,10 +72,30 @@ auto test_zip() -> int {
   return errors;
 }
 
+auto test_chunks() -> int {
+  auto a = std::array{1, 2, 3, 4, 5, 6, 7, 8};
+  auto errors = 0;
+  auto index = 1;
+
+  for (auto chunk : chunks(a, 2)) {
+    for (auto v : chunk) {
+      if (v != index) {
+        std::cerr << "<Chunks> Value mismatch: " << v << " != " << index << '\n';
+        ++errors;
+      }
+      ++index;
+    }
+  }
+  
+  if (!errors) std::cout << "<Chunks> Finished without errors\n";
+
+  return errors;
+}
+
 auto test_file_reader() -> int {
   auto path = "data/chmpxx";
   auto size = std::filesystem::file_size(path);
-  auto buffered = fasta_reader{path, 32768, dna::size()};
+  auto buffered = fasta_reader{path, dna::size()};
   auto direct = std::vector<std::array<char, dna::size()>>(size/dna::size());
   auto file = std::ifstream{path, std::ios::binary};
   auto errors = 0;
@@ -83,7 +103,7 @@ auto test_file_reader() -> int {
   file.read(reinterpret_cast<char*>(direct.data()), size);
 
   auto i = 0;
-  for (const auto& b : buffered) {
+  for (auto b : buffered) {
     if (b != std::string_view{direct[i].data(), direct[i].size()}) {
       std::cerr << "<File reader> Test failed: buffered[i] != direct[i] for i = " << i << " out of " << direct.size() - 1 << '\n'
         << "\tbuffered[i]\t= " << b << '\n'
@@ -160,6 +180,34 @@ auto test_tree_layerwise() -> int {
   return errors;
 }
 
+auto test_tree_hybrid() -> int {
+  auto path = "data/chmpxx";
+  auto data = read_genome(path);
+  auto compressed = shared_tree::create_balanced(data);
+  auto errors = 0;
+
+  if (data.size() != compressed.length()) {
+    std::cerr << "<Tree hybrid> Test failed: raw data size (" << data.size()
+      << ") does not match compressed data size (" << compressed.length() << ")\n";
+    ++errors;
+  }
+
+  auto i = 0;
+  for (const auto& [d, c] : zip(data, compressed)) {
+    if (d != c) {
+      std::cerr << "<Tree hybrid> Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
+        << "\tdata[i]\t\t= " << d << '\n'
+        << "\tcompressed[i]\t= " << c << '\n';
+      ++errors;
+    }
+    ++i;
+  }
+
+  if (!errors) std::cout << "<Tree hybrid> Finished without errors\n";
+
+  return errors;
+}
+
 auto test_tree_pairwise() -> int {
   auto path = "data/chmpxx";
   auto data = read_genome(path);
@@ -219,7 +267,7 @@ auto test_tree_factories() -> int {
 }
 
 int main(int argc, char* argv[]) {
-  auto errors = test_zip() + test_tree() + test_tree_factories() + test_tree_layerwise() + test_tree_pairwise() + test_file_reader() + test_node();
+  auto errors = test_zip() + test_chunks() + test_file_reader() + test_node() + test_tree() + test_tree_layerwise() + test_tree_pairwise() + test_tree_hybrid() + test_tree_factories();
   if (errors) std::cerr << "Not all tests passed\n";
   return errors;
 }

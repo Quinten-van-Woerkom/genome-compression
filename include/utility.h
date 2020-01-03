@@ -140,3 +140,58 @@ constexpr auto to_bits(T value) noexcept -> std::array<bool, 8*sizeof(T)> {
   }
   return result;
 }
+
+
+/**
+ *  Range adaptor that returns the range divided into chunks.
+ */
+namespace detail {
+template<typename Iterable>
+class chunks_class {
+public:
+  chunks_class(Iterable iterable, std::size_t chunk_size) : iterable{iterable}, chunk_size{chunk_size} {}
+
+  using subiterator = decltype(std::begin(std::declval<Iterable>()));
+  using value_type = decltype(*std::declval<subiterator>());
+
+  struct chunk {
+    struct iterator {
+      auto operator*() { return std::forward<value_type>(*current); }
+      auto operator*() const { return *current; }
+      auto& operator++() { ++current; ++counter; return *this; }
+      auto operator!=(const iterator& other) const { return counter < other.counter && current != other.current; }
+      
+      subiterator current;
+      std::size_t counter;
+    };
+
+    auto begin() const { return iterator{current, 0}; }
+    auto end() const { return iterator{end_, chunk_size}; }
+
+    subiterator current, end_;
+    std::size_t chunk_size;
+  };
+
+  struct iterator {
+    auto operator*() const { return chunk{begin, end, chunk_size}; }
+    auto& operator++() { for (auto i = 0u; i < chunk_size && begin != end; ++i) ++begin; return *this; }
+    auto operator!=(const iterator&) const { return begin != end; }
+
+    subiterator begin, end;
+    std::size_t chunk_size;
+  };
+
+  auto begin() { return iterator{std::begin(iterable), std::end(iterable), chunk_size}; }
+  auto end() { return iterator{std::begin(iterable), std::end(iterable), chunk_size}; }
+
+
+private:
+  Iterable&& iterable;
+  std::size_t chunk_size;
+};
+}
+
+template<typename Iterable>
+auto chunks(Iterable&& iterable, std::size_t chunk_size) -> detail::chunks_class<Iterable> {
+  return {std::forward<Iterable>(iterable), chunk_size};
+}
