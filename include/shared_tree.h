@@ -24,7 +24,6 @@ public:
 
   node(pointer left, pointer right) : left_{left}, right_{right} {}
   node(pointer left) : left_{left}, right_{nullptr} {}
-  node() : left_{nullptr}, right_{nullptr} {}
 
   auto left_leaf() const -> const dna& { assert(left_.is_leaf()); return left_.get_leaf(); }
   auto right_leaf() const -> const dna& { assert(right_.is_leaf()); return right_.get_leaf(); }
@@ -38,40 +37,6 @@ public:
   auto size() const noexcept -> std::size_t { return left_.size() + right_.size(); }
   auto full() const noexcept -> bool { return !left_.empty() && !right_.empty(); }
   auto empty() const noexcept -> bool { return left_.empty() && right_.empty(); }
-  void clear() noexcept { left_ = nullptr; right_ = nullptr; }
-
-  template<typename... Args>
-  auto left(Args&&... args) {
-    left_ = pointer{args...};
-    return left_;
-  }
-
-  template<typename... Args>
-  auto right(Args&&... args) {
-    right_ = pointer{args...};
-    return right_;
-  }
-
-  // Tries to add a new pointer in the first empty position, if there is any.
-  // Returns false if both left and right positions are filled.
-  template<typename... Args>
-  auto emplace(Args&&... args) noexcept -> bool {
-    if (left_.empty()) {
-      left(args...);
-      return true;
-    } else if (right_.empty()) {
-      right(args...);
-      return true;
-    } else return false;
-  }
-
-  // For now, only mirror symmetry exists.
-  // In the future, more similarities might be added.
-  auto similarities(const node& other) const {
-    assert(*this == other);
-    if (left_ == other.right_ && right_ == other.left_) return true;
-    else return false;
-  }
 
   // Accessor
   auto operator[](std::size_t index) const -> const dna& {
@@ -174,7 +139,7 @@ public:
   auto left_node() const -> const node& { return root.get_node().left_node(); }
   auto right_node() const -> const node& { return root.get_node().right_node(); }
 
-  // Number of elements stored
+  // Number of nodes stored
   auto size() const -> std::size_t { return nodes.size(); }
 
   // Length of the data sequence
