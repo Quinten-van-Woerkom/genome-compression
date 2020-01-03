@@ -53,6 +53,10 @@ auto dna::nucleotide(std::size_t index) const -> char {
     case nac::V: return 'V';
     case nac::N: return 'N';
     case nac::Indeterminate: return '-';
+    default: {
+      std::cerr << "Trying to decipher invalid FASTA symbol\n";
+      exit(1);
+    }
   }
 }
 
@@ -91,7 +95,7 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
     case 'N': set_internal(index, nac::N); break;
     case '-': set_internal(index, nac::Indeterminate); break;
     default: {
-      std::cerr << "Encountered unknown symbol: " << nucleotide << " (ASCII code " << static_cast<int>(nucleotide) << ")\n"; // We skip unknown symbols
+      std::cerr << "Encountered unknown symbol: " << nucleotide << " (ASCII code " << static_cast<int>(nucleotide) << ")\n";
       exit(1);
     }
   }

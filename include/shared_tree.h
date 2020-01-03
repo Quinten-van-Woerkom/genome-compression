@@ -78,7 +78,7 @@ public:
     }
 
     auto empty() const noexcept -> bool { return size_ == 0 && void_pointer == nullptr; }
-    auto size() const noexcept -> std::size_t { return is_leaf() ? 1 : size_; }
+    auto size() const noexcept -> std::size_t { return is_leaf() ? 1 : (empty() ? 0 : subnode->size()); }
     auto is_leaf() const noexcept -> bool { return size_ == 0 && void_pointer != nullptr; }
     
     auto get_leaf() const -> const dna& { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return *data; }
