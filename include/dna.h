@@ -18,7 +18,7 @@ namespace fs = std::filesystem;
 
 // Supported nucleic acid codes
 enum class nac : char {
-  A, C, G, T, U, R, Y, K, M, S, W, B, D, H, V, N
+  A, C, G, T, U, R, Y, K, M, S, W, B, D, H, V, N, Indeterminate
 };
 
 // DNA strand of predetermined size

@@ -52,7 +52,7 @@ auto dna::nucleotide(std::size_t index) const -> char {
     case nac::H: return 'H';
     case nac::V: return 'V';
     case nac::N: return 'N';
-    default: return 'N';
+    case nac::Indeterminate: return '-';
   }
 }
 
@@ -89,6 +89,7 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
     case 'D': set_internal(index, nac::D); break;
     case 'H': set_internal(index, nac::H); break;
     case 'N': set_internal(index, nac::N); break;
+    case '-': set_internal(index, nac::Indeterminate); break;
     default: {
       std::cerr << "Encountered unknown symbol: " << nucleotide << " (ASCII code " << static_cast<int>(nucleotide) << ")\n"; // We skip unknown symbols
       exit(1);
