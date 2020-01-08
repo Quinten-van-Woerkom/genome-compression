@@ -57,3 +57,17 @@ void fasta_reader::load_buffer() {
   }
   index = 0;
 }
+
+auto read_genome(const fs::path path) -> std::vector<dna> {
+  if (!fs::is_regular_file(path)) {
+    std::cerr << "Non-existent path, aborting...\n";
+    exit(1);
+  }
+
+  auto result = std::vector<dna>{};
+  auto file = fasta_reader{path, dna::size()};
+  for (const auto& element : file)
+    result.emplace_back(element);
+
+  return result;
+}

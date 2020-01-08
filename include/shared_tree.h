@@ -25,6 +25,8 @@ public:
 
   node(pointer left, pointer right) : left_{left}, right_{right} {}
   node(pointer left) : left_{left}, right_{nullptr} {}
+  node(dna left, dna right) : left_{left}, right_{right} {}
+  node(dna left) : left_{left}, right_{nullptr} {}
 
   auto left_leaf() const -> const dna& { assert(left_.is_leaf()); return left_.get_leaf(); }
   auto right_leaf() const -> const dna& { assert(right_.is_leaf()); return right_.get_leaf(); }
@@ -61,14 +63,14 @@ public:
    */
   class pointer {
   public:
-    pointer(std::nullptr_t = nullptr) : size_{0}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
-    pointer(const node& subnode) : size_{subnode.size()}, subnode{&subnode} {}
-    pointer(dna data) : size_{0}, data{data} {}
+    pointer(std::nullptr_t = nullptr) : leaf{false}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
+    pointer(const node& subnode) : leaf{false}, subnode{&subnode} {}
+    pointer(dna data) : leaf{true}, data{data} {}
 
-    operator std::size_t() const noexcept { return detail::hash(reinterpret_cast<std::size_t>(void_pointer), size_); }
+    operator std::size_t() const noexcept { return detail::hash(reinterpret_cast<std::size_t>(void_pointer), leaf); }
 
     bool operator==(const pointer& other) const noexcept {
-      return size_ == other.size_ && void_pointer == other.void_pointer;
+      return leaf == other.leaf && void_pointer == other.void_pointer;
     }
 
     // Accessor
@@ -78,9 +80,9 @@ public:
       else return this->get_node()[index];
     }
 
-    auto empty() const noexcept -> bool { return size_ == 0 && void_pointer == nullptr; }
-    auto size() const noexcept -> std::size_t { return is_leaf() ? 1 : (empty() ? 0 : subnode->size()); }
-    auto is_leaf() const noexcept -> bool { return size_ == 0 && void_pointer != nullptr; }
+    auto is_leaf() const noexcept -> bool { return leaf == true; }
+    auto empty() const noexcept -> bool { return !is_leaf() && subnode == nullptr; }
+    auto size() const noexcept -> std::size_t { return empty() ? 0 : (is_leaf() ? 1 : subnode->size()); }
     
     auto get_leaf() const -> const dna& { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return data; }
     auto get_node() const -> const node& { assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf."); return *subnode; }
@@ -93,7 +95,7 @@ public:
 
   private:
     // TODO: Add annotations for similarity transforms
-    std::size_t size_;
+    bool leaf;
     
     union {
       const void* void_pointer;
@@ -180,7 +182,6 @@ public:
 private:
   pointer root;
   std::unordered_set<node> nodes;
-  // std::unordered_set<dna> leaves;
 };
 
 /**
@@ -191,87 +192,46 @@ private:
  */
 template<typename Iterable>
 auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
+  constexpr auto segment_size = (1u<<26);
   auto result = shared_tree{};
-  constexpr auto segment_size = (1u<<25);
-  // auto duplicates = 0;
+  auto segments = std::vector<pointer>{};
 
-  std::vector<pointer> segments;
-  std::vector<pointer> previous_layer;
-  std::vector<pointer> next_layer;
-
-  auto size = data.size();
-  auto segment_space = size / segment_size;
-  auto data_space = segment_size/2 + segment_size%2;
-  auto reserve_space = segment_space > data_space ? segment_space : data_space;
-  // std::cout << "Reserving space: " << reserve_space << '\n';
-
-  segments.reserve(reserve_space);
-  previous_layer.reserve(reserve_space);
-  next_layer.reserve(reserve_space);
-
-  for (const auto& segment : chunks(data, segment_size)) {
+  auto reduce_layer = [&](const auto& layer) {
+    std::vector<pointer> next_layer;
+    next_layer.reserve(layer.size()/2 + layer.size()%2);
     pairwise_apply(
-      segment,
+      layer,
       [&](const auto& left, const auto& right) {
-        auto created_node = node{dna{left}, dna{right}};
+        auto created_node = node{left, right};
         auto insertion = result.nodes.emplace(created_node);
         auto& canonical_node = *(insertion.first);
-        previous_layer.emplace_back(canonical_node);
+        next_layer.emplace_back(canonical_node);
       },
       [&](const auto& left) {
-        auto created_node = node{dna{left}};
+        auto created_node = node{left};
         auto insertion = result.nodes.emplace(created_node);
         auto& canonical_node = *(insertion.first);
-        previous_layer.emplace_back(canonical_node);
+        next_layer.emplace_back(canonical_node);
       }
     );
+    return next_layer;
+  };
 
-    while (previous_layer.size() > 1) {
-      pairwise_apply(
-        previous_layer,
-        [&](const auto& left, const auto& right) {
-          auto created_node = node{left, right};
-          auto insertion = result.nodes.emplace(created_node);
-          auto& canonical_node = *(insertion.first);
-          next_layer.emplace_back(canonical_node);
-        },
-        [&](const auto& left) {
-          auto created_node = node{previous_layer.back()};
-          auto insertion = result.nodes.emplace(created_node);
-          auto& canonical_node = *(insertion.first);
-          next_layer.emplace_back(canonical_node);
-      });
+  for (const auto& segment : chunks(data, segment_size)) {
+    auto layer = reduce_layer(segment);
 
-      std::swap(previous_layer, next_layer);
-      next_layer.clear();
+    while (layer.size() > 1) {
+      auto next_layer = reduce_layer(layer);
+      std::swap(layer, next_layer);
     }
-    segments.emplace_back(previous_layer.front());
+    segments.emplace_back(layer.front());
   }
 
   while (segments.size() > 1) {
-      std::vector<pointer> next_layer;
-      next_layer.reserve(segments.size()/2 + segments.size()%2);
+    auto next_layer = reduce_layer(segments);
+    std::swap(next_layer, segments);
+  }
 
-      for (const auto& [left, right] : pairwise(segments)) {
-        auto created_node = node{left, right};
-        auto insertion = result.nodes.emplace(created_node);
-        // if (!insertion.second) ++duplicates;
-        auto& canonical_node = *(insertion.first);
-        next_layer.emplace_back(canonical_node);
-      }
-      if (segments.size() % 2) {
-        auto created_node = node{segments.back()};
-        auto insertion = result.nodes.emplace(created_node);
-        // if (!insertion.second) ++duplicates;
-        auto& canonical_node = *(insertion.first);
-        next_layer.emplace_back(canonical_node);
-      }
-
-      std::swap(segments, next_layer);
-      next_layer.clear();
-    }
-
-  // std::cout << "Duplicates: " << duplicates << '\n';
   result.root = pointer{segments.front()};
   return result;
 }

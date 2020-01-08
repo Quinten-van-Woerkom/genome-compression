@@ -14,6 +14,8 @@
 #include <string_view>
 #include <vector>
 
+#include "dna.h"
+
 class fasta_reader {
 public:
   fasta_reader(std::filesystem::path path, std::size_t step_size = 1, std::size_t buffer_size = 32768);
@@ -22,7 +24,7 @@ public:
 
   // auto eof() const -> bool { return file.eof() && index >= (buffer.size()-1); }
   auto eof() const -> bool { return end_of_file; }
-  auto current_symbol() -> std::string_view { return {buffer.data() + index, step_size}; }
+  auto current_symbol() -> dna { return std::string_view{buffer.data() + index, step_size}; }
   void next_symbol();
   void load_buffer();
 
@@ -44,7 +46,7 @@ public:
       iterator(fasta_reader& parent)
         : parent{parent} {}
 
-      auto operator*() const -> std::string_view { return parent.current_symbol(); }
+      auto operator*() const -> dna { return parent.current_symbol(); }
       auto operator==(const iterator&) const -> bool { return parent.eof(); } // Hackish implementation but it works
       auto operator!=(const iterator&) const -> bool { return !parent.eof(); }
 
@@ -69,3 +71,5 @@ private:
   std::size_t step_size;
   bool end_of_file = false;
 };
+
+auto read_genome(const fs::path path) -> std::vector<dna>;

@@ -80,7 +80,6 @@ public:
     // This would indicate that the range contained an even number of elements
     // and could therefore be visited in full.
     bool exactly_equals(const iterator& other) {
-      // return left == other.left && right == other.right;
       return !(left != other.left || right != other.right);
     }
 
@@ -107,12 +106,11 @@ void pairwise_apply(Iterable&& iterable, BinaryFunc binary_func, UnaryFunc unary
   auto&& range = pairwise(std::forward<Iterable>(iterable));
   auto begin = range.begin();
   auto end = range.end();
-  for (; begin != end; ++begin) {
+  for (; begin != end; ++begin)
     binary_func(*begin.left, *begin.right);
-  }
-  if (!begin.exactly_equals(end)) {
+  
+  if (!begin.exactly_equals(end))
     unary_func(*begin.left);
-  }
 }
 
 /**
@@ -187,6 +185,7 @@ public:
 
     auto begin() const { return iterator{current, 0}; }
     auto end() const { return iterator{end_, chunk_size}; }
+    auto size() const { return chunk_size; }
 
     subiterator current, end_;
     std::size_t chunk_size;

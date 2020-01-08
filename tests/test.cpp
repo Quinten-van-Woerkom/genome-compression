@@ -175,7 +175,7 @@ auto test_tree_factory() -> int {
     ++i;
   }
 
-  if (!errors) std::cout << "<Tree factory> Finished without errors\n";
+  if (!errors) std::cout << "<Tree factory> Finished without errors\n!";
 
   return errors;
 }
