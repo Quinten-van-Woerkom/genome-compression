@@ -62,8 +62,7 @@ public:
   pairwise_class(Iterable iterable) : iterable{iterable} {}
 
   template<typename Iterator>
-  class iterator {
-  public:
+  struct iterator {
     iterator(Iterator left, Iterator right) : left{left}, right{right} {}
 
     auto operator*() { return std::forward_as_tuple(*left, *right); }
@@ -73,14 +72,23 @@ public:
     auto operator--(int) { auto temp = *this; --left; --left; --right; --right; return temp; }
 
     // We stop iteration when our iterator matches the end's left iterator.
-    auto operator!=(const iterator& other) { return left != other.left && right != other.left; }
+    auto operator!=(const iterator& other) {
+      return left != other.left && right != other.left;
+    }
 
-  private:
+    // Whether or not the iterators overlap exactly, i.e. it is an exact match.
+    // This would indicate that the range contained an even number of elements
+    // and could therefore be visited in full.
+    bool exactly_equals(const iterator& other) {
+      // return left == other.left && right == other.right;
+      return !(left != other.left || right != other.right);
+    }
+
     Iterator left, right;
   };
 
-  auto begin() { return iterator{iterable.begin(), std::next(iterable.begin())}; }
-  auto end() { return iterator{iterable.end(), std::next(iterable.end())}; }
+  auto begin() { return iterator{iterable.begin(), ++iterable.begin()}; }
+  auto end() { return iterator{iterable.end(), ++iterable.end()}; }
   auto cbegin() { return iterator{iterable.cbegin(), ++iterable.cbegin()}; }
   auto cend() { return iterator{iterable.cend(), ++iterable.cend()}; }
 
@@ -94,6 +102,18 @@ auto pairwise(Iterable&& iterable) -> detail::pairwise_class<Iterable> {
   return {std::forward<Iterable>(iterable)};
 }
 
+template<typename Iterable, typename BinaryFunc, typename UnaryFunc>
+void pairwise_apply(Iterable&& iterable, BinaryFunc binary_func, UnaryFunc unary_func) {
+  auto&& range = pairwise(std::forward<Iterable>(iterable));
+  auto begin = range.begin();
+  auto end = range.end();
+  for (; begin != end; ++begin) {
+    binary_func(*begin.left, *begin.right);
+  }
+  if (!begin.exactly_equals(end)) {
+    unary_func(*begin.left);
+  }
+}
 
 /**
  *  Hash function for an arbitrary set of arguments.

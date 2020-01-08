@@ -63,7 +63,7 @@ public:
   public:
     pointer(std::nullptr_t = nullptr) : size_{0}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
     pointer(const node& subnode) : size_{subnode.size()}, subnode{&subnode} {}
-    pointer(const dna& data) : size_{0}, data{&data} {}
+    pointer(dna data) : size_{0}, data{data} {}
 
     operator std::size_t() const noexcept { return detail::hash(reinterpret_cast<std::size_t>(void_pointer), size_); }
 
@@ -82,12 +82,12 @@ public:
     auto size() const noexcept -> std::size_t { return is_leaf() ? 1 : (empty() ? 0 : subnode->size()); }
     auto is_leaf() const noexcept -> bool { return size_ == 0 && void_pointer != nullptr; }
     
-    auto get_leaf() const -> const dna& { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return *data; }
+    auto get_leaf() const -> const dna& { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return data; }
     auto get_node() const -> const node& { assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf."); return *subnode; }
 
     friend auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
       if (p.empty()) return os << "empty";
-      else if (p.is_leaf()) return os << "leaf: " << *p.data;
+      else if (p.is_leaf()) return os << "leaf: " << p.data;
       else return os << "node: " << p.subnode;
     }
 
@@ -98,7 +98,7 @@ public:
     union {
       const void* void_pointer;
       const node* subnode;
-      const dna* data;
+      dna data;
     };
   };
 
@@ -128,8 +128,8 @@ public:
   shared_tree() : root{nullptr} {}
 
   shared_tree(shared_tree&& other)
-    : root{std::move(other.root)}, nodes{std::move(other.nodes)},
-      leaves{std::move(other.leaves)}
+    : root{std::move(other.root)}, nodes{std::move(other.nodes)}
+      // leaves{std::move(other.leaves)}
   {}
 
   template<typename Iterable>
@@ -180,7 +180,7 @@ public:
 private:
   pointer root;
   std::unordered_set<node> nodes;
-  std::unordered_set<dna> leaves;
+  // std::unordered_set<dna> leaves;
 };
 
 /**
@@ -193,7 +193,7 @@ template<typename Iterable>
 auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
   auto result = shared_tree{};
   constexpr auto segment_size = (1u<<25);
-  auto duplicates = 0;
+  // auto duplicates = 0;
 
   std::vector<pointer> segments;
   std::vector<pointer> previous_layer;
@@ -210,28 +210,37 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
   next_layer.reserve(reserve_space);
 
   for (const auto& segment : chunks(data, segment_size)) {
-    for (const auto& element : segment) {
-      auto insertion = result.leaves.emplace(element);
-      // if (!insertion.second) ++duplicates;
-      auto& canonical_leaf = *(insertion.first);
-      previous_layer.emplace_back(canonical_leaf);
-    }
-    
+    pairwise_apply(
+      segment,
+      [&](const auto& left, const auto& right) {
+        auto created_node = node{dna{left}, dna{right}};
+        auto insertion = result.nodes.emplace(created_node);
+        auto& canonical_node = *(insertion.first);
+        previous_layer.emplace_back(canonical_node);
+      },
+      [&](const auto& left) {
+        auto created_node = node{dna{left}};
+        auto insertion = result.nodes.emplace(created_node);
+        auto& canonical_node = *(insertion.first);
+        previous_layer.emplace_back(canonical_node);
+      }
+    );
+
     while (previous_layer.size() > 1) {
-      for (const auto& [left, right] : pairwise(previous_layer)) {
-        auto created_node = node{left, right};
-        auto insertion = result.nodes.emplace(created_node);
-        if (!insertion.second) ++duplicates;
-        auto& canonical_node = *(insertion.first);
-        next_layer.emplace_back(canonical_node);
-      }
-      if (previous_layer.size() % 2) {
-        auto created_node = node{previous_layer.back()};
-        auto insertion = result.nodes.emplace(created_node);
-        // if (!insertion.second) ++duplicates;
-        auto& canonical_node = *(insertion.first);
-        next_layer.emplace_back(canonical_node);
-      }
+      pairwise_apply(
+        previous_layer,
+        [&](const auto& left, const auto& right) {
+          auto created_node = node{left, right};
+          auto insertion = result.nodes.emplace(created_node);
+          auto& canonical_node = *(insertion.first);
+          next_layer.emplace_back(canonical_node);
+        },
+        [&](const auto& left) {
+          auto created_node = node{previous_layer.back()};
+          auto insertion = result.nodes.emplace(created_node);
+          auto& canonical_node = *(insertion.first);
+          next_layer.emplace_back(canonical_node);
+      });
 
       std::swap(previous_layer, next_layer);
       next_layer.clear();
