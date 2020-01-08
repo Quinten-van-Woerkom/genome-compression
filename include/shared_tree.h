@@ -6,6 +6,7 @@
 #pragma once
 
 #include <cassert>
+#include <memory_resource>
 #include <optional>
 #include <stack>
 #include <unordered_set>
@@ -124,7 +125,7 @@ public:
   using pointer = typename node::pointer;
 
   shared_tree(const shared_tree&) = delete; // Ensures that factory functions are used for in-place construction
-  shared_tree() : root{nullptr} {};
+  shared_tree() : root{nullptr} {}
 
   shared_tree(shared_tree&& other)
     : root{std::move(other.root)}, nodes{std::move(other.nodes)},

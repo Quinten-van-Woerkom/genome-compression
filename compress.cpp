@@ -11,7 +11,6 @@
 #include "dna.h"
 #include "shared_tree.h"
 #include "file_reader.h"
-#include "monotonic_pool.h"
 
 int main(int argc, char* argv[]) {
   std::string path = "data/chmpxx";

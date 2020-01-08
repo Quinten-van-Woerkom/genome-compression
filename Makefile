@@ -1,5 +1,5 @@
 CC=gcc
-CXX=g++-8
+CXX=g++-9
 RM=rm -f
 CPPFLAGS=-Wall -std=c++17 -Iinclude
 ADDED_CPPFLAGS=
