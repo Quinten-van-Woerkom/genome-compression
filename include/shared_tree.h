@@ -12,15 +12,64 @@
 #include <utility>
 #include <vector>
 
+#include "dna.h"
 #include "utility.h"
 
 /**
+ *  Forward references.
+ */
+class node;
+class pointer;
+
+/******************************************************************************
+ *  Annotated pointer to another node in the tree.
+ *  Instead of references to leaf nodes, their values are stored directly.
+ */
+class pointer {
+public:
+  pointer(std::nullptr_t = nullptr) : leaf{false}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
+  pointer(const node& subnode) : leaf{false}, subnode{&subnode} {}
+  pointer(dna data) : leaf{true}, data{data} {}
+
+  operator std::size_t() const noexcept { return detail::hash(reinterpret_cast<std::size_t>(void_pointer), leaf); }
+
+  bool operator==(const pointer& other) const noexcept {
+    return leaf == other.leaf && void_pointer == other.void_pointer;
+  }
+
+  // Accessor
+  auto operator[](std::size_t index) const -> const dna&;
+
+  auto is_leaf() const noexcept -> bool { return leaf == true; }
+  auto empty() const noexcept -> bool { return !is_leaf() && subnode == nullptr; }
+  auto size() const noexcept -> std::size_t;
+  
+  auto get_leaf() const -> const dna&;
+  auto get_node() const -> const node&;
+
+  friend auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
+    if (p.empty()) return os << "empty";
+    else if (p.is_leaf()) return os << "leaf: " << p.data;
+    else return os << "node: " << p.subnode;
+  }
+
+private:
+  bool leaf : 1;
+  
+  union {
+    const void* void_pointer;
+    const node* subnode;
+    dna data;
+  };
+};
+
+/******************************************************************************
  *  Node in a non-owning tree. Children are either other nodes or leaf nodes,
  *  containing the actual data stored.
  */
 class node {
 public:
-  class pointer;
+  using pointer = pointer;
 
   node(pointer left, pointer right) : left_{left}, right_{right} {}
   node(pointer left) : left_{left}, right_{nullptr} {}
@@ -47,55 +96,6 @@ public:
     return os << "node<" << n.left_ << ", " << n.right_ << ">";
   }
 
-  /**
-   *  Annotated pointer to another node in the tree.
-   *  This node can be either a leaf or an internal node.
-   *  Data is assumed to be approximately the same size as a pointer, so that
-   *  it makes sense to store the data instead of a pointer.
-   */
-  class pointer {
-  public:
-    pointer(std::nullptr_t = nullptr) : leaf{false}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
-    pointer(const node& subnode) : leaf{false}, subnode{&subnode} {}
-    pointer(dna data) : leaf{true}, data{data} {}
-
-    operator std::size_t() const noexcept { return detail::hash(reinterpret_cast<std::size_t>(void_pointer), leaf); }
-
-    bool operator==(const pointer& other) const noexcept {
-      return leaf == other.leaf && void_pointer == other.void_pointer;
-    }
-
-    // Accessor
-    auto operator[](std::size_t index) const -> const dna& {
-      assert(index < this->size());
-      if (this->is_leaf()) return this->get_leaf();
-      else return this->get_node()[index];
-    }
-
-    auto is_leaf() const noexcept -> bool { return leaf == true; }
-    auto empty() const noexcept -> bool { return !is_leaf() && subnode == nullptr; }
-    auto size() const noexcept -> std::size_t { return empty() ? 0 : (is_leaf() ? 1 : subnode->size()); }
-    
-    auto get_leaf() const -> const dna& { assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf."); return data; }
-    auto get_node() const -> const node& { assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf."); return *subnode; }
-
-    friend auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
-      if (p.empty()) return os << "empty";
-      else if (p.is_leaf()) return os << "leaf: " << p.data;
-      else return os << "node: " << p.subnode;
-    }
-
-  private:
-    // TODO: Add annotations for similarity transforms
-    bool leaf;
-    
-    union {
-      const void* void_pointer;
-      const node* subnode;
-      dna data;
-    };
-  };
-
 private:
   pointer left_, right_;
 };
@@ -116,8 +116,6 @@ namespace std {
  */
 class shared_tree {
 public:
-  using pointer = typename node::pointer;
-
   shared_tree() : root{nullptr} {}
   shared_tree(const shared_tree&) = delete; // Self-referencing inside unordered set prevents copies
   shared_tree(shared_tree&&) = default;
@@ -129,7 +127,7 @@ public:
   auto size() const -> std::size_t { return nodes.size(); }
 
   // Length of the data sequence
-  auto length() const -> std::size_t { return root.size(); }
+  auto width() const -> std::size_t { return root.size(); }
 
   auto operator[](std::size_t index) const -> const dna& {
     return root[index];
