@@ -39,25 +39,21 @@ void fasta_reader::next_symbol() {
  *  Loads the next data in the FASTA file into the current buffer.
  */
 void fasta_reader::load_buffer() {
-  static auto total = 0llu;
   auto position = 0lu;
 
   while (position < buffer.size()-1) {
     file.clear();
-    if (file.peek() == '>' || file.peek() == '\n') {
+    if (file.peek() == '>' || file.peek() == '\n')
       file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    }
     file.getline(&buffer[position], buffer.size() - position);
 
     // When a newline is found: failbit == false, actual line size = gcount() - 1
     // When the buffer end is reached: failbit == true, actual line size = gcount()
     const auto size = file.fail() ? file.gcount() : file.gcount() - 1;
     position += size;
-    total += size;
     
     if (file.eof()) {
       buffer.resize(position - position%dna::size());
-      std::cout << "Total parsed data: " << total << " bytes\n";
       index = 0;
       return;
     }
