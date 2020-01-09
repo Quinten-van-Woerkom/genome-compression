@@ -203,14 +203,14 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
 
     while (layer.size() > 1) {
       auto next_layer = reduce_layer(layer);
-      std::swap(layer, next_layer);
+      layer = std::move(next_layer);
     }
     segments.emplace_back(layer.front());
   }
 
   while (segments.size() > 1) {
     auto next_layer = reduce_layer(segments);
-    std::swap(next_layer, segments);
+    segments = std::move(next_layer);
   }
 
   result.root = pointer{segments.front()};
