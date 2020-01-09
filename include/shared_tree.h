@@ -25,11 +25,6 @@ public:
   node(pointer left, pointer right) : left_{left}, right_{right} {}
   node(pointer left) : left_{left}, right_{nullptr} {}
   
-  auto left_leaf() const -> const dna& { assert(left_.is_leaf()); return left_.get_leaf(); }
-  auto right_leaf() const -> const dna& { assert(right_.is_leaf()); return right_.get_leaf(); }
-  auto left_node() const -> const node& { assert(!left_.is_leaf()); return left_.get_node(); }
-  auto right_node() const -> const node& { assert(!right_.is_leaf()); return right_.get_node(); }
-
   auto left() const -> pointer { return left_; }
   auto right() const -> pointer { return right_; }
   
@@ -123,21 +118,12 @@ class shared_tree {
 public:
   using pointer = typename node::pointer;
 
-  shared_tree(const shared_tree&) = delete; // Ensures that factory functions are used for in-place construction
   shared_tree() : root{nullptr} {}
-
-  shared_tree(shared_tree&& other)
-    : root{std::move(other.root)}, nodes{std::move(other.nodes)}
-      // leaves{std::move(other.leaves)}
-  {}
+  shared_tree(const shared_tree&) = delete; // Self-referencing inside unordered set prevents copies
+  shared_tree(shared_tree&&) = default;
 
   template<typename Iterable>
   static auto create_balanced(Iterable&& data) -> shared_tree;
-
-  auto left_leaf() const -> const dna& { return root.get_node().left_leaf(); }
-  auto right_leaf() const -> const dna& { return root.get_node().right_leaf(); }
-  auto left_node() const -> const node& { return root.get_node().left_node(); }
-  auto right_node() const -> const node& { return root.get_node().right_node(); }
 
   // Number of nodes stored
   auto size() const -> std::size_t { return nodes.size(); }
@@ -214,7 +200,7 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
     return next_layer;
   };
 
-  for (const auto& segment : chunks(data, segment_size)) {
+  for (const auto&& segment : chunks(data, segment_size)) {
     auto layer = reduce_layer(segment);
 
     while (layer.size() > 1) {

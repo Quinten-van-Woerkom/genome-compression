@@ -165,7 +165,7 @@ auto test_tree_factory() -> int {
   }
 
   auto i = 0;
-  for (const auto& [d, c] : zip(data, compressed)) {
+  for (const auto [d, c] : zip(data, compressed)) {
     if (d != c) {
       std::cerr << "<Tree factory> Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
         << "\tdata[i]\t\t= " << d << '\n'

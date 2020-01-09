@@ -20,9 +20,9 @@ public:
     : it1{std::forward<Iterable1>(it1)}, it2{std::forward<Iterable2>(it2)} {}
 
   template<typename Iterator1, typename Iterator2>
-  class iterator {
-  public:
-    iterator(Iterator1 it1, Iterator2 it2) : it1{it1}, it2{it2} {}
+  struct iterator {
+    Iterator1 it1;
+    Iterator2 it2;
 
     auto operator*() { return std::forward_as_tuple(*it1, *it2); }
     auto& operator++() { ++it1; ++it2; return *this; }
@@ -30,11 +30,10 @@ public:
     auto& operator--() { --it1; --it2; return *this; }
     auto operator--(int) { auto temp = *this; --*this; return temp; }
     auto operator!=(const iterator& other) { return it1 != other.it1 && it2 != other.it2; } // Stop iteration at first end
-
-  private:
-    Iterator1 it1;
-    Iterator2 it2;
   };
+
+  template<typename Iterator1, typename Iterator2>
+  iterator(Iterator1, Iterator2) -> iterator<Iterator1, Iterator2>;
 
   auto begin() { return iterator{it1.begin(), it2.begin()}; }
   auto end() { return iterator{it1.end(), it2.end()}; }
@@ -61,9 +60,10 @@ class pairwise_class {
 public:
   pairwise_class(Iterable iterable) : iterable{iterable} {}
 
-  template<typename Iterator>
+  template<typename IteratorL, typename IteratorR>
   struct iterator {
-    iterator(Iterator left, Iterator right) : left{left}, right{right} {}
+    IteratorL left;
+    IteratorR right;
 
     auto operator*() { return std::forward_as_tuple(*left, *right); }
     auto& operator++() { ++left; ++left; ++right; ++right; return *this; }
@@ -82,9 +82,10 @@ public:
     bool exactly_equals(const iterator& other) {
       return !(left != other.left || right != other.right);
     }
-
-    Iterator left, right;
   };
+
+  template<typename IteratorL, typename IteratorR>
+  iterator(IteratorL, IteratorR) -> iterator<IteratorL, IteratorR>;
 
   auto begin() { return iterator{iterable.begin(), ++iterable.begin()}; }
   auto end() { return iterator{iterable.end(), ++iterable.end()}; }

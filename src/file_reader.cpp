@@ -66,7 +66,7 @@ auto read_genome(const fs::path path) -> std::vector<dna> {
 
   auto result = std::vector<dna>{};
   auto file = fasta_reader{path, dna::size()};
-  for (const auto& element : file)
+  for (const auto&& element : file)
     result.emplace_back(element);
 
   return result;
