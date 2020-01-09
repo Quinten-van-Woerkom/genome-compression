@@ -37,9 +37,6 @@ public:
     return leaf == other.leaf && void_pointer == other.void_pointer;
   }
 
-  // Accessor
-  auto operator[](std::size_t index) const -> const dna&;
-
   auto is_leaf() const noexcept -> bool { return leaf == true; }
   auto empty() const noexcept -> bool { return !is_leaf() && subnode == nullptr; }
   auto size() const noexcept -> std::size_t;
@@ -64,7 +61,7 @@ private:
 };
 
 /******************************************************************************
- *  Node in a non-owning tree. Children are either other nodes or leaf nodes,
+ *  Node in a shared tree. Children are either other nodes or leaf nodes,
  *  containing the actual data stored.
  */
 class node {
@@ -74,19 +71,15 @@ public:
   node(pointer left, pointer right) : left_{left}, right_{right} {}
   node(pointer left) : left_{left}, right_{nullptr} {}
   
-  auto left() const -> pointer { return left_; }
-  auto right() const -> pointer { return right_; }
+  auto left() const -> const pointer& { return left_; }
+  auto right() const -> const pointer& { return right_; }
+  auto left() -> pointer& { return left_; }
+  auto right() -> pointer& { return right_; }
   
   auto hash() const noexcept -> std::size_t { return detail::hash(left_, right_); }
   auto size() const noexcept -> std::size_t { return left_.size() + right_.size(); }
   auto full() const noexcept -> bool { return !left_.empty() && !right_.empty(); }
   auto empty() const noexcept -> bool { return left_.empty() && right_.empty(); }
-
-  // Accessor
-  auto operator[](std::size_t index) const -> const dna& {
-    if (index < left_.size()) return left_[index];
-    else return right_[index - left_.size()];
-  }
 
   bool operator==(const node& other) const noexcept {
     return left_ == other.left_ && right_ == other.right_;
@@ -108,16 +101,13 @@ namespace std {
   };
 }
 
-/**
+/******************************************************************************
  *  Genome, constructed as a balanced shared tree.
- *  Note that the tree itself is non-owning; rather, the nodes must be stored
- *  elsewhere to allow for canonicalisation of nodes.
- *  Precondition: each node is assumed to exist only once.
  */
 class shared_tree {
 public:
   shared_tree() : root{nullptr} {}
-  shared_tree(const shared_tree&) = delete; // Self-referencing inside unordered set prevents copies
+  shared_tree(const shared_tree&) = delete; // The self-referencing inside unordered set prevents copies
   shared_tree(shared_tree&&) = default;
 
   template<typename Iterable>
@@ -130,7 +120,17 @@ public:
   auto width() const -> std::size_t { return root.size(); }
 
   auto operator[](std::size_t index) const -> const dna& {
-    return root[index];
+    const auto* current = &root;
+    while (!current->is_leaf()) {
+      const auto& node = current->get_node();
+      if (index < node.left().size()) {
+        current = &node.left();
+      } else {
+        index -= node.left().size();
+        current = &node.right();
+      }
+    }
+    return current->get_leaf();
   }
   
   void print_unique() const {

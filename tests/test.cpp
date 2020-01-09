@@ -127,23 +127,23 @@ auto test_tree() -> int {
   auto root = node{left_node, right_node};
   auto errors = 0;
 
-  if (root[0] != left) {
+  if (root.left().get_node().left().get_leaf() != left) {
     std::cerr << "<Tree> Test failed: root[0] != left\n"
-      << "\troot[0] =\t" << root[0] << '\n'
+      << "\troot[0] =\t" << root.left().get_node().left().get_leaf() << '\n'
       << "\tleft =\t" << left << '\n';
     ++errors;
   }
 
-  if (root[1] != right) {
+  if (root.left().get_node().right().get_leaf() != right) {
     std::cerr << "<Tree> Test failed: root[1] != right\n"
-      << "\troot[1] =\t" << root[1] << '\n'
+      << "\troot[1] =\t" << root.left().get_node().right().get_leaf() << '\n'
       << "\tright =\t" << right << '\n';
     ++errors;
   }
 
-  if (root[2] != single) {
+  if (root.right().get_node().left().get_leaf() != single) {
     std::cerr << "<Tree> Test failed: root[2] != single\n"
-      << "\troot[2] =\t" << root[2] << '\n'
+      << "\troot[2] =\t" << root.right().get_node().left().get_leaf() << '\n'
       << "\tsingle =\t" << single << '\n';
     ++errors;
   }

@@ -8,12 +8,6 @@
 /******************************************************************************
  *  Annotated pointer to a node in the tree.
  */
-auto pointer::operator[](std::size_t index) const -> const dna& {
-  assert(index < this->size());
-  if (this->is_leaf()) return this->get_leaf();
-  else return this->get_node()[index];
-}
-
 auto pointer::size() const noexcept -> std::size_t {
   if (empty()) return 0;
   if (is_leaf()) return 1;
