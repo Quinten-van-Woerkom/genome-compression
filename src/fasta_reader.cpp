@@ -4,7 +4,7 @@
  *  loaded in memory.
  */
 
-#include "file_reader.h"
+#include "fasta_reader.h"
 
 #include <cctype>
 #include <iostream>
@@ -12,13 +12,13 @@
 
 namespace fs = std::filesystem;
 
-fasta_reader::fasta_reader(fs::path path, std::size_t step_size, std::size_t buffer_size)
-  : file{path}, index{0}, step_size{step_size} {
+fasta_reader::fasta_reader(fs::path path, std::size_t buffer_size)
+  : file{path}, index{0} {
   if (!file.is_open()) {
     std::cerr << "Unable to open file, aborting...\n";
     exit(1);
   }
-  buffer.resize(buffer_size - buffer_size%step_size + 1);
+  buffer.resize(buffer_size - buffer_size%dna::size() + 1);
   load_buffer();
 }
 
@@ -26,7 +26,7 @@ fasta_reader::fasta_reader(fs::path path, std::size_t step_size, std::size_t buf
  *  Advances the reader towards the next meaningful FASTA symbol.
  */
 void fasta_reader::next_symbol() {
-  index += step_size;
+  index += dna::size();
   if (index >= buffer.size()-1) {
     load_buffer();
   }
@@ -65,7 +65,7 @@ auto read_genome(const fs::path path) -> std::vector<dna> {
   }
 
   auto result = std::vector<dna>{};
-  auto file = fasta_reader{path, dna::size()};
+  auto file = fasta_reader{path};
   for (const auto&& element : file)
     result.emplace_back(element);
 

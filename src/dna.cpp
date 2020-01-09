@@ -8,7 +8,7 @@
 #include <string_view>
 #include <tuple>
 
-#include "file_reader.h"
+#include "fasta_reader.h"
 #include "utility.h"
 
 namespace fs = std::filesystem;

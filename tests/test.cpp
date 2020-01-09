@@ -9,7 +9,7 @@
 #include <iostream>
 
 #include "dna.h"
-#include "file_reader.h"
+#include "fasta_reader.h"
 #include "shared_tree.h"
 #include "utility.h"
 
@@ -158,9 +158,9 @@ auto test_tree_factory() -> int {
   auto compressed = shared_tree::create_balanced(data);
   auto errors = 0;
 
-  if (data.size() != compressed.length()) {
+  if (data.size() != compressed.width()) {
     std::cerr << "<Tree factory> Test failed: raw data size (" << data.size()
-      << ") does not match compressed data size (" << compressed.length() << ")\n";
+      << ") does not match compressed data size (" << compressed.width() << ")\n";
     ++errors;
   }
 
