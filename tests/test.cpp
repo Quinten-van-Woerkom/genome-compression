@@ -95,12 +95,19 @@ auto test_chunks() -> int {
 auto test_file_reader() -> int {
   auto path = "data/chmpxx";
   auto size = std::filesystem::file_size(path);
-  auto buffered = fasta_reader{path, dna::size()};
+  auto buffered = fasta_reader{path};
   auto direct = std::vector<std::array<char, dna::size()>>(size/dna::size());
   auto file = std::ifstream{path, std::ios::binary};
   auto errors = 0;
 
   file.read(reinterpret_cast<char*>(direct.data()), size);
+
+  if (direct.size() != size/dna::size()) {
+    std::cerr << "<File reader> Test failed: file path size does not match read size within accuracy bounds\n"
+      << "File path: " << size << '\n'
+      << "Direct read: " << direct.size()*dna::size() << '\n';
+    ++errors;
+  }
 
   auto i = 0;
   for (auto b : buffered) {
@@ -111,6 +118,13 @@ auto test_file_reader() -> int {
       ++errors;
     }
     ++i;
+  }
+
+  if (i != size/dna::size()) {
+    std::cerr << "<File reader> Test failed: file path size does not match buffered read size within accuracy bounds\n"
+      << "File path: " << size << '\n'
+      << "Buffered read: " << i*dna::size() << '\n';
+    ++errors;
   }
 
   if (!errors) std::cout << "<File reader> Finished without errors\n";
@@ -141,7 +155,7 @@ auto test_tree_factory() -> int {
     ++i;
   }
 
-  if (!errors) std::cout << "<Tree factory> Finished without errors\n!";
+  if (!errors) std::cout << "<Tree factory> Finished without errors\n";
 
   return errors;
 }

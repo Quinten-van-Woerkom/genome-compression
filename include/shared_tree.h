@@ -44,12 +44,6 @@ public:
   auto get_leaf() const -> const dna&;
   auto get_node() const -> const node&;
 
-  friend auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
-    if (p.empty()) return os << "empty";
-    else if (p.is_leaf()) return os << "leaf: " << p.data;
-    else return os << "node: " << p.subnode;
-  }
-
 private:
   bool leaf : 1;
   
@@ -59,6 +53,12 @@ private:
     dna data;
   };
 };
+
+static auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
+    if (p.empty()) return os << "empty";
+    else if (p.is_leaf()) return os << "leaf: " << p.get_leaf();
+    else return os << "node: " << &p.get_node();
+  }
 
 /******************************************************************************
  *  Node in a shared tree. Children are either other nodes or leaf nodes,
@@ -73,25 +73,22 @@ public:
   
   auto left() const -> const pointer& { return left_; }
   auto right() const -> const pointer& { return right_; }
-  auto left() -> pointer& { return left_; }
-  auto right() -> pointer& { return right_; }
   
   auto hash() const noexcept -> std::size_t { return detail::hash(left_, right_); }
   auto size() const noexcept -> std::size_t { return left_.size() + right_.size(); }
-  auto full() const noexcept -> bool { return !left_.empty() && !right_.empty(); }
   auto empty() const noexcept -> bool { return left_.empty() && right_.empty(); }
 
   bool operator==(const node& other) const noexcept {
     return left_ == other.left_ && right_ == other.right_;
   }
 
-  friend auto operator<<(std::ostream& os, const node& n) -> std::ostream& {
-    return os << "node<" << n.left_ << ", " << n.right_ << ">";
-  }
-
 private:
   pointer left_, right_;
 };
+
+static auto operator<<(std::ostream& os, const node& n) -> std::ostream& {
+  return os << "node<" << n.left() << ", " << n.right() << ">";
+}
 
 namespace std {
   template<> struct hash<node> {
@@ -166,53 +163,46 @@ private:
 };
 
 /**
- *  Constructs a shared binary tree from a vector of data, using spatial
+ *  Constructs a shared binary tree from a range of data, using spatial
  *  subdivision for common subtree merging.
  *  Reduces the data into nodes layer-by-layer, reducing each layer in segments
  *  that fit in memory.
  */
 template<typename Iterable>
 auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
-  constexpr auto segment_size = (1u<<26);
+  constexpr auto segment_size = (1u<<25);
   auto result = shared_tree{};
   auto segments = std::vector<pointer>{};
 
-  auto reduce_layer = [&](const auto& layer) {
+  auto reduce_once = [&](const auto& layer) {
     std::vector<pointer> next_layer;
     next_layer.reserve(layer.size()/2 + layer.size()%2);
-    pairwise_apply(
-      layer,
-      [&](const auto& left, const auto& right) {
-        auto created_node = node{left, right};
-        auto insertion = result.nodes.emplace(created_node);
-        auto& canonical_node = *(insertion.first);
-        next_layer.emplace_back(canonical_node);
-      },
-      [&](const auto& left) {
-        auto created_node = node{left};
-        auto insertion = result.nodes.emplace(created_node);
-        auto& canonical_node = *(insertion.first);
-        next_layer.emplace_back(canonical_node);
-      }
-    );
+
+    // Emplaces a node in the next layer, using arguments passed
+    auto emplace_node = [&](auto... args) {
+      auto created_node = node{args...};
+      auto insertion = result.nodes.emplace(created_node);
+      auto& canonical_node = *(insertion.first);
+      next_layer.emplace_back(canonical_node);
+    };
+
+    // Emplace node is used for both the binary and unary function
+    foreach_pair(layer, emplace_node, emplace_node);
     return next_layer;
   };
 
+  auto reduce = [&](auto&& layer) {
+    while (layer.size() > 1)
+      layer = reduce_once(layer);
+    return layer.front();
+  };
+
   for (const auto&& segment : chunks(data, segment_size)) {
-    auto layer = reduce_layer(segment);
-
-    while (layer.size() > 1) {
-      auto next_layer = reduce_layer(layer);
-      layer = std::move(next_layer);
-    }
-    segments.emplace_back(layer.front());
+    auto layer = reduce_once(segment);
+    auto segment_root = reduce(layer);
+    segments.emplace_back(segment_root);
   }
 
-  while (segments.size() > 1) {
-    auto next_layer = reduce_layer(segments);
-    segments = std::move(next_layer);
-  }
-
-  result.root = pointer{segments.front()};
+  result.root = reduce(segments);
   return result;
 }

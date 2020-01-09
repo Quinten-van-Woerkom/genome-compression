@@ -22,24 +22,12 @@ public:
   fasta_reader(const fasta_reader&) = delete;
   fasta_reader(fasta_reader&&) = default;
 
-  // auto eof() const -> bool { return file.eof() && index >= (buffer.size()-1); }
   auto eof() const -> bool { return end_of_file; }
   auto current_symbol() -> dna { return std::string_view{buffer.data() + index, dna::size()}; }
   void next_symbol();
   void load_buffer();
 
-  // Merely an upper bound, as headers are also considered.
-  // As each character is a single base pair, the number of base pairs is
-  // equivalent to the size of the file.
-  auto size() -> std::size_t {
-    auto pos = file.tellg();
-    file.seekg(0);
-    file.ignore(std::numeric_limits<std::streamsize>::max());
-    auto length = file.gcount();
-    file.clear();
-    file.seekg(pos);
-    return length;
-  }
+  auto size() -> std::size_t;
 
   class iterator {
     public:

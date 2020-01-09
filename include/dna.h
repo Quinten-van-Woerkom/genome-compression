@@ -26,6 +26,7 @@ class dna {
   static constexpr std::size_t length = 15; // Length of a single strand
 public:
   dna(const std::string_view strand);
+  dna(unsigned long long value) noexcept;
 
   // Only for testing purposes
   static auto random(unsigned seed = 0) -> dna {
@@ -64,5 +65,3 @@ namespace std {
     }
   };
 }
-
-auto read_genome(const fs::path path) -> std::vector<dna>;

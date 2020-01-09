@@ -20,6 +20,8 @@ dna::dna(const std::string_view strand) {
   }
 }
 
+dna::dna(unsigned long long value) noexcept : nucleotides{value} {}
+
 /**
  *  Operator[] overload that redirects to return the nucleotide located at
  *  <index>, assuming that <index> is smaller than <length>.

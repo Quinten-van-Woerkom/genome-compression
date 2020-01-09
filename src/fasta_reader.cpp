@@ -28,7 +28,10 @@ fasta_reader::fasta_reader(fs::path path, std::size_t buffer_size)
 void fasta_reader::next_symbol() {
   index += dna::size();
   if (index >= buffer.size()-1) {
-    load_buffer();
+    if (!file.eof())
+      load_buffer();
+    else
+      end_of_file = true;
   }
 }
 
@@ -36,27 +39,47 @@ void fasta_reader::next_symbol() {
  *  Loads the next data in the FASTA file into the current buffer.
  */
 void fasta_reader::load_buffer() {
+  static auto total = 0llu;
   auto position = 0lu;
 
   while (position < buffer.size()-1) {
     file.clear();
-    if (file.peek() == '>' || file.peek() == '\n')
+    if (file.peek() == '>' || file.peek() == '\n') {
       file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
     file.getline(&buffer[position], buffer.size() - position);
 
     // When a newline is found: failbit == false, actual line size = gcount() - 1
     // When the buffer end is reached: failbit == true, actual line size = gcount()
     const auto size = file.fail() ? file.gcount() : file.gcount() - 1;
     position += size;
-
+    total += size;
+    
     if (file.eof()) {
-      buffer.resize(position);
-      end_of_file = true;
+      buffer.resize(position - position%dna::size());
+      std::cout << "Total parsed data: " << total << " bytes\n";
+      index = 0;
       return;
     }
   }
   index = 0;
 }
+
+/**
+ * Merely an upper bound, as headers are also considered.
+ * As each character is a single base pair, the number of base pairs is
+ * equivalent to the size of the file.
+ */
+auto fasta_reader::size() -> std::size_t {
+  auto pos = file.tellg();
+  file.seekg(0);
+  file.ignore(std::numeric_limits<std::streamsize>::max());
+  auto length = file.gcount();
+  file.clear();
+  file.seekg(pos);
+  return length;
+}
+
 
 auto read_genome(const fs::path path) -> std::vector<dna> {
   if (!fs::is_regular_file(path)) {

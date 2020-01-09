@@ -52,66 +52,25 @@ auto zip(Iterable1&& it1, Iterable2&& it2) -> detail::zip_class<Iterable1&&, Ite
 }
 
 /**
- *  Range that iterates over a sequence in pairs.
+ *  Applies a functor to each consecutive pair, only last remaining entry is
+ *  handled on its own, if the number of elements is odd.
+ *  e.g. 1, 2, 3, 4, 5 -> (1, 2), (3, 4), (5)
  */
-namespace detail {
-template<typename Iterable>
-class pairwise_class {
-public:
-  pairwise_class(Iterable iterable) : iterable{iterable} {}
-
-  template<typename IteratorL, typename IteratorR>
-  struct iterator {
-    IteratorL left;
-    IteratorR right;
-
-    auto operator*() { return std::forward_as_tuple(*left, *right); }
-    auto& operator++() { ++left; ++left; ++right; ++right; return *this; }
-    auto operator++(int) { auto temp = *this; ++left; ++left; ++right; ++right; return temp; }
-    auto& operator--() { --left; --left; --right; --right; return *this; }
-    auto operator--(int) { auto temp = *this; --left; --left; --right; --right; return temp; }
-
-    // We stop iteration when our iterator matches the end's left iterator.
-    auto operator!=(const iterator& other) {
-      return left != other.left && right != other.left;
-    }
-
-    // Whether or not the iterators overlap exactly, i.e. it is an exact match.
-    // This would indicate that the range contained an even number of elements
-    // and could therefore be visited in full.
-    bool exactly_equals(const iterator& other) {
-      return !(left != other.left || right != other.right);
-    }
-  };
-
-  template<typename IteratorL, typename IteratorR>
-  iterator(IteratorL, IteratorR) -> iterator<IteratorL, IteratorR>;
-
-  auto begin() { return iterator{iterable.begin(), ++iterable.begin()}; }
-  auto end() { return iterator{iterable.end(), ++iterable.end()}; }
-  auto cbegin() { return iterator{iterable.cbegin(), ++iterable.cbegin()}; }
-  auto cend() { return iterator{iterable.cend(), ++iterable.cend()}; }
-
-private:
-  Iterable iterable;
-};
-}
-
-template<typename Iterable>
-auto pairwise(Iterable&& iterable) -> detail::pairwise_class<Iterable> {
-  return {std::forward<Iterable>(iterable)};
-}
-
 template<typename Iterable, typename BinaryFunc, typename UnaryFunc>
-void pairwise_apply(Iterable&& iterable, BinaryFunc binary_func, UnaryFunc unary_func) {
-  auto&& range = pairwise(std::forward<Iterable>(iterable));
-  auto begin = range.begin();
-  auto end = range.end();
-  for (; begin != end; ++begin)
-    binary_func(*begin.left, *begin.right);
-  
-  if (!begin.exactly_equals(end))
-    unary_func(*begin.left);
+void foreach_pair(Iterable&& iterable, BinaryFunc binary_func, UnaryFunc unary_func) {
+  auto begin = iterable.begin();
+  auto end = iterable.end();
+
+  for (; begin != end; ++begin) {
+    auto&& left = *begin;
+    ++begin;
+    if (begin != end)
+      binary_func(left, *begin);
+    else {
+      unary_func(left);
+      return;
+    }
+  }
 }
 
 /**
@@ -175,7 +134,7 @@ public:
 
   struct chunk {
     struct iterator {
-      auto operator*() { return std::forward<value_type>(*current); }
+      auto operator*() -> decltype(auto) { return *current; }
       auto operator*() const { return *current; }
       auto& operator++() { ++current; ++counter; return *this; }
       auto operator!=(const iterator& other) const { return counter < other.counter && current != other.current; }
@@ -194,7 +153,7 @@ public:
 
   struct iterator {
     auto operator*() const { return chunk{begin, end, chunk_size}; }
-    auto& operator++() { for (auto i = 0u; i < chunk_size && begin != end; ++i) ++begin; return *this; }
+    auto& operator++() { return *this; }
     auto operator!=(const iterator&) const { return begin != end; }
 
     subiterator begin, end;
