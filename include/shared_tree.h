@@ -170,7 +170,7 @@ private:
  */
 template<typename Iterable>
 auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
-  constexpr auto segment_size = (1u<<25);
+  constexpr auto segment_size = (1u<<27);
   auto result = shared_tree{};
   auto segments = std::vector<pointer>{};
 
