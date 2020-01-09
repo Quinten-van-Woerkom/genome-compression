@@ -6,7 +6,6 @@
 #pragma once
 
 #include <cassert>
-#include <memory_resource>
 #include <optional>
 #include <stack>
 #include <unordered_set>
@@ -25,9 +24,7 @@ public:
 
   node(pointer left, pointer right) : left_{left}, right_{right} {}
   node(pointer left) : left_{left}, right_{nullptr} {}
-  node(dna left, dna right) : left_{left}, right_{right} {}
-  node(dna left) : left_{left}, right_{nullptr} {}
-
+  
   auto left_leaf() const -> const dna& { assert(left_.is_leaf()); return left_.get_leaf(); }
   auto right_leaf() const -> const dna& { assert(right_.is_leaf()); return right_.get_leaf(); }
   auto left_node() const -> const node& { assert(!left_.is_leaf()); return left_.get_node(); }
