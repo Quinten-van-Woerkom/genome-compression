@@ -23,3 +23,21 @@ auto pointer::get_node() const -> const node& {
   assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf.");
   return *subnode;
 }
+
+
+/******************************************************************************
+ *  Genome, constructed as a balanced shared tree.
+ */
+auto shared_tree::operator[](std::size_t index) const -> const dna& {
+  const auto* current = &root;
+  while (!current->is_leaf()) {
+    const auto& node = current->get_node();
+    if (index < node.left().size()) {
+      current = &node.left();
+    } else {
+      index -= node.left().size();
+      current = &node.right();
+    }
+  }
+  return current->get_leaf();
+}

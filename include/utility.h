@@ -139,20 +139,20 @@ public:
       auto& operator++() { ++current; ++counter; return *this; }
       auto operator!=(const iterator& other) const { return counter < other.counter && current != other.current; }
       
-      subiterator current;
+      subiterator& current;
       std::size_t counter;
     };
 
-    auto begin() const { return iterator{current, 0}; }
-    auto end() const { return iterator{end_, chunk_size}; }
+    auto begin() { return iterator{begin_, 0}; }
+    auto end() { return iterator{end_, chunk_size}; }
     auto size() const { return chunk_size; }
 
-    subiterator current, end_;
+    subiterator& begin_, end_;
     std::size_t chunk_size;
   };
 
   struct iterator {
-    auto operator*() const { return chunk{begin, end, chunk_size}; }
+    auto operator*() { return chunk{begin, end, chunk_size}; }
     auto& operator++() { return *this; }
     auto operator!=(const iterator&) const { return begin != end; }
 

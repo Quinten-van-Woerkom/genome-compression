@@ -116,19 +116,7 @@ public:
   // Length of the data sequence
   auto width() const -> std::size_t { return root.size(); }
 
-  auto operator[](std::size_t index) const -> const dna& {
-    const auto* current = &root;
-    while (!current->is_leaf()) {
-      const auto& node = current->get_node();
-      if (index < node.left().size()) {
-        current = &node.left();
-      } else {
-        index -= node.left().size();
-        current = &node.right();
-      }
-    }
-    return current->get_leaf();
-  }
+  auto operator[](std::size_t index) const -> const dna&;
   
   void print_unique() const {
     for (const auto& node : nodes)
@@ -174,7 +162,7 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
   auto result = shared_tree{};
   auto segments = std::vector<pointer>{};
 
-  auto reduce_once = [&](const auto& layer) {
+  auto reduce_once = [&](auto&& layer) {
     std::vector<pointer> next_layer;
     next_layer.reserve(layer.size()/2 + layer.size()%2);
 
@@ -197,7 +185,7 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
     return layer.front();
   };
 
-  for (const auto&& segment : chunks(data, segment_size)) {
+  for (auto segment : chunks(data, segment_size)) {
     auto layer = reduce_once(segment);
     auto segment_root = reduce(layer);
     segments.emplace_back(segment_root);
