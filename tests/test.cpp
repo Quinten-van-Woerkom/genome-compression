@@ -118,40 +118,6 @@ auto test_file_reader() -> int {
   return errors;
 }
 
-auto test_tree() -> int {
-  auto left = dna::random();
-  auto right = dna::random();
-  auto single = dna::random();
-  auto left_node = node{left, right};
-  auto right_node = node{single};
-  auto root = node{left_node, right_node};
-  auto errors = 0;
-
-  if (root.left().get_node().left().get_leaf() != left) {
-    std::cerr << "<Tree> Test failed: root[0] != left\n"
-      << "\troot[0] =\t" << root.left().get_node().left().get_leaf() << '\n'
-      << "\tleft =\t" << left << '\n';
-    ++errors;
-  }
-
-  if (root.left().get_node().right().get_leaf() != right) {
-    std::cerr << "<Tree> Test failed: root[1] != right\n"
-      << "\troot[1] =\t" << root.left().get_node().right().get_leaf() << '\n'
-      << "\tright =\t" << right << '\n';
-    ++errors;
-  }
-
-  if (root.right().get_node().left().get_leaf() != single) {
-    std::cerr << "<Tree> Test failed: root[2] != single\n"
-      << "\troot[2] =\t" << root.right().get_node().left().get_leaf() << '\n'
-      << "\tsingle =\t" << single << '\n';
-    ++errors;
-  }
-
-  if (!errors) std::cout << "<Tree> Finished without errors\n";
-  return errors;
-}
-
 auto test_tree_factory() -> int {
   auto path = "data/chmpxx";
   auto data = read_genome(path);
@@ -181,7 +147,7 @@ auto test_tree_factory() -> int {
 }
 
 int main(int argc, char* argv[]) {
-  auto errors = test_zip() + test_chunks() + test_file_reader() + test_node() + test_tree() + test_tree_factory();
+  auto errors = test_zip() + test_chunks() + test_file_reader() + test_node() + test_tree_factory();
   if (errors) std::cerr << "Not all tests passed\n";
   return errors;
 }
