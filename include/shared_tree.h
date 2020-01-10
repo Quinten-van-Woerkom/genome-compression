@@ -174,7 +174,8 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
       next_layer.emplace_back(canonical_node);
     };
 
-    // Emplace node is used for both the binary and unary function
+    // Iterates over each pair, applying emplace_node.
+    // If a singular element remains, applies emplace_node to that, too.
     foreach_pair(layer, emplace_node, emplace_node);
     return next_layer;
   };

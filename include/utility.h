@@ -61,15 +61,12 @@ void foreach_pair(Iterable&& iterable, BinaryFunc binary_func, UnaryFunc unary_f
   auto begin = iterable.begin();
   auto end = iterable.end();
 
-  for (; begin != end; ++begin) {
+  while (begin != end) {
     auto&& left = *begin;
     ++begin;
-    if (begin != end)
-      binary_func(left, *begin);
-    else {
-      unary_func(left);
-      return;
-    }
+    if (!(begin != end)) return unary_func(left);
+    binary_func(left, *begin);
+    ++begin;
   }
 }
 
