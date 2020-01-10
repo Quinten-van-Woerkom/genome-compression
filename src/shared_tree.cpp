@@ -45,20 +45,14 @@ auto shared_tree::iterator::operator++() -> iterator& {
 
     if (next.is_leaf()) {
       current = next;
-      // std::cout << "Found leaf: " << current << '\n';
       return *this;
     }
 
-    // std::cout << "Accessing next: " << next << ' ' << access(next) << '\n';
     auto node = access(next);
-    if (!node.right().empty()) {
-      // std::cout << "Emplacing right: " << node.right() << '\n';
-      stack.emplace_back(node.right());
-    }
-    if (!node.left().empty()) {
-      // std::cout << "Emplacing left: " << node.left() << '\n';
-      stack.emplace_back(node.left());
-    }
+    if (auto right = node.right(); !right.empty())
+      stack.emplace_back(right);
+    if (auto left = node.left(); !left.empty())
+      stack.emplace_back(left);
   }
 
   current = nullptr;
@@ -70,7 +64,7 @@ auto shared_tree::iterator::operator++() -> iterator& {
  */
 auto shared_tree::iterator::access(pointer pointer) const -> const node& {
   const auto index = pointer.index();
-  return (*nodes)[index-1];
+  return nodes[index-1];
 }
 
 auto shared_tree::operator[](std::size_t index) const -> dna {

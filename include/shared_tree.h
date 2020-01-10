@@ -114,7 +114,7 @@ public:
   }
 
   struct iterator {
-    iterator(const std::vector<node>& nodes, pointer root) : nodes{&nodes}, current{root} {
+    iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes}, current{root} {
       if (root != pointer{nullptr}) {
         stack.emplace_back(root);
         ++(*this);
@@ -127,7 +127,7 @@ public:
 
     auto access(pointer pointer) const -> const node&;
 
-    const std::vector<node>* nodes;
+    const std::vector<node>& nodes;
     pointer current;
     std::vector<pointer> stack;
   };
