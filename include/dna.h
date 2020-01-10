@@ -38,6 +38,8 @@ public:
     return result;
   }
 
+  auto to_ullong() const { return nucleotides.to_ullong(); }
+
   auto operator[](std::size_t index) const -> char;
   auto nucleotide(std::size_t index) const -> char;
   

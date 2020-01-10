@@ -16,20 +16,25 @@
 auto test_node() -> int {
   auto errors = 0;
 
-  auto leaf = node::pointer{dna::random()};
+  auto data = dna::random();
+  auto leaf = pointer{data};
   if (!leaf.is_leaf()) {
     std::cerr << "<Tree node> Test failed: pointer to data should be a leaf node\n";
     ++errors;
   }
 
-  auto inner_node = node{leaf, leaf};
-  auto node_pointer = node::pointer{inner_node};
+  if (leaf.leaf() != data) {
+    std::cerr << "<Tree node> Test failed: pointer{data}.leaf() != data: " << leaf.leaf() << "!=" << data << '\n';
+    ++errors;
+  }
+
+  auto node_pointer = pointer{1};
   if (node_pointer.is_leaf()) {
     std::cerr << "<Tree node> Test failed: pointer to points should not be a leaf node\n";
     ++errors;
   }
 
-  auto empty = node::pointer{nullptr};
+  auto empty = pointer{nullptr};
   if (!empty.empty()) {
     std::cerr << "<Tree node> Test failed: nullptr-initialized pointer should be empty\n";
     ++errors;
@@ -109,7 +114,7 @@ auto test_file_reader() -> int {
     ++errors;
   }
 
-  auto i = 0;
+  auto i = 0u;
   for (auto b : buffered) {
     if (b != std::string_view{direct[i].data(), direct[i].size()}) {
       std::cerr << "<File reader> Test failed: buffered[i] != direct[i] for i = " << i << " out of " << direct.size() - 1 << '\n'
@@ -140,15 +145,15 @@ auto test_tree_factory() -> int {
 
   if (data.size() != compressed.width()) {
     std::cerr << "<Tree factory> Test failed: raw data size (" << data.size()
-      << ") does not match compressed data size (" << compressed.width() << ")\n";
+      << ") does not match compressed data size (" << compressed.width() << ", " << compressed.node_count() << " nodes)\n";
     ++errors;
   }
 
   auto i = 0;
-  for (const auto [d, c] : zip(data, compressed)) {
-    if (d != c) {
+  for (const auto c : compressed) {
+    if (data[i] != c) {
       std::cerr << "<Tree factory> Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
-        << "\tdata[i]\t\t= " << d << '\n'
+        << "\tdata[i]\t\t= " << data[i] << '\n'
         << "\tcompressed[i]\t= " << c << '\n';
       ++errors;
     }

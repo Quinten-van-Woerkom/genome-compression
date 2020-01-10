@@ -8,7 +8,7 @@
 #include <cassert>
 #include <optional>
 #include <stack>
-#include <unordered_set>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -27,38 +27,32 @@ class pointer;
  */
 class pointer {
 public:
-  pointer(std::nullptr_t = nullptr) : leaf{false}, void_pointer{nullptr} {}  // Special construct to denote the absence of data
-  pointer(const node& subnode) : leaf{false}, subnode{&subnode} {}
-  pointer(dna data) : leaf{true}, data{data} {}
+  // And index of 0 is used to represent a nullptr, and absence of data
+  pointer(std::size_t index) : leaf_flag{false}, data{index} {}
+  pointer(dna dna) : leaf_flag{true}, data{dna.to_ullong()} {}
+  pointer(std::nullptr_t) : leaf_flag{false}, data{0} {}
 
-  operator std::size_t() const noexcept { return detail::hash(reinterpret_cast<std::size_t>(void_pointer), leaf); }
+  operator std::size_t() const noexcept { return detail::hash(leaf_flag, data); }  // TODO: Check if this is really necessary.
 
   bool operator==(const pointer& other) const noexcept {
-    return leaf == other.leaf && void_pointer == other.void_pointer;
+    return leaf_flag == other.leaf_flag && data == other.data;
   }
 
-  auto is_leaf() const noexcept -> bool { return leaf == true; }
-  auto empty() const noexcept -> bool { return !is_leaf() && subnode == nullptr; }
-  auto size() const noexcept -> std::size_t;
-  
-  auto get_leaf() const -> const dna&;
-  auto get_node() const -> const node&;
+  auto is_leaf() const noexcept -> bool { return leaf_flag; }
+  auto empty() const noexcept -> bool { return !is_leaf() && data == 0; }
+  auto leaf() const -> dna;
+  auto index() const -> std::size_t;
 
 private:
-  bool leaf : 1;
-  
-  union {
-    const void* void_pointer;
-    const node* subnode;
-    dna data;
-  };
+  bool leaf_flag : 1;
+  std::size_t data : 60;
 };
 
 static auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
-    if (p.empty()) return os << "empty";
-    else if (p.is_leaf()) return os << "leaf: " << p.get_leaf();
-    else return os << "node: " << &p.get_node();
-  }
+  if (p.empty()) return os << "empty";
+  else if (p.is_leaf()) return os << "leaf: " << p.leaf();
+  else return os << "node: " << p.index();
+}
 
 /******************************************************************************
  *  Node in a shared tree. Children are either other nodes or leaf nodes,
@@ -66,8 +60,6 @@ static auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
  */
 class node {
 public:
-  using pointer = pointer;
-
   node(pointer left, pointer right) : left_{left}, right_{right} {}
   node(pointer left) : left_{left}, right_{nullptr} {}
   
@@ -75,7 +67,6 @@ public:
   auto right() const -> const pointer& { return right_; }
   
   auto hash() const noexcept -> std::size_t { return detail::hash(left_, right_); }
-  auto size() const noexcept -> std::size_t { return left_.size() + right_.size(); }
   auto empty() const noexcept -> bool { return left_.empty() && right_.empty(); }
 
   bool operator==(const node& other) const noexcept {
@@ -112,38 +103,52 @@ public:
 
   // Number of nodes stored
   auto node_count() const -> std::size_t { return nodes.size(); }
-  auto width() const -> std::size_t { return root.size(); }
+  auto width() const -> std::size_t { return children(root); }
+  auto children(pointer parent) const -> std::size_t;
 
-  auto operator[](std::size_t index) const -> const dna&;
+  auto operator[](std::size_t index) const -> dna;
   
   void print_unique() const {
     for (const auto& node : nodes)
         std::cout << node << '\n';
   }
 
-  class iterator {
-  public:
-    iterator(shared_tree& parent, std::size_t index = 0) : parent{parent}, index{index} {}
-    auto& operator*() { return parent[index]; }
-    auto& operator++() { ++index; return *this; }
-    auto operator++(int) { auto temp = *this; ++index; return temp; }
-    auto& operator--() { --index; return *this; }
-    auto operator--(int) { auto temp = *this; --index; return temp; }
-    auto operator!=(const iterator& other) const { return &parent != &other.parent || index != other.index; }
+  struct iterator {
+    iterator(const std::vector<node>& nodes, pointer root) : nodes{&nodes}, current{root} {
+      if (root != pointer{nullptr}) {
+        stack.emplace_back(root);
+        ++(*this);
+      }
+    }
 
-  private:
-    shared_tree& parent;
-    std::size_t index;
+    auto operator*() const { return current.leaf(); }
+    auto operator++() -> iterator&;
+    auto operator!=(const iterator& other) const { return nodes != other.nodes || current != other.current; }
+
+    auto access(pointer pointer) const -> const node&;
+
+    const std::vector<node>* nodes;
+    pointer current;
+    std::vector<pointer> stack;
   };
 
   using const_iterator = iterator;
 
-  auto begin() { return iterator{*this, 0}; }
-  auto end() { return iterator{*this, root.size()}; }
-  auto cbegin() { return const_iterator{*this, 0}; }
-  auto cend() { return const_iterator{*this, root.size()}; }
+  auto subtree(pointer parent) const {
+    return iterator_pair(
+      iterator{nodes, parent},
+      iterator{nodes, nullptr}
+    );
+  }
+
+  auto begin() { return iterator{nodes, root}; }
+  auto end() { return iterator{nodes, nullptr}; }
+  auto cbegin() { return const_iterator{nodes, root}; }
+  auto cend() { return const_iterator{nodes, nullptr}; }
 
 private:
+  auto access(pointer pointer) const -> const node&;
+
   template<typename... Args>
   void emplace_node(std::vector<pointer>& layer, Args&&... args);
 
@@ -154,7 +159,8 @@ private:
   auto reduce(Iterable&& layer) -> pointer;
 
   pointer root;
-  std::unordered_set<node> nodes;
+  std::unordered_map<node, std::size_t> indices;
+  std::vector<node> nodes;
 };
 
 /**
@@ -165,10 +171,11 @@ private:
  */
 template<typename... Args>
 void shared_tree::emplace_node(std::vector<pointer>& layer, Args&&... args) {
-  auto created_node = node{args...};
-  auto insertion = nodes.emplace(created_node);
-  auto& canonical_node = *(insertion.first);
-  layer.emplace_back(canonical_node);
+  auto created_node = node{pointer{args}...};
+  auto insertion = indices.try_emplace(created_node, nodes.size()+1);
+  if (insertion.second) nodes.emplace_back(created_node);
+  auto index = (*insertion.first).second;
+  layer.emplace_back(index);
 }
 
 /**
