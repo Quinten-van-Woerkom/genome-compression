@@ -158,7 +158,7 @@ private:
  */
 template<typename Iterable>
 auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
-  constexpr auto segment_size = (1u<<27);
+  constexpr auto segment_size = (1u<<29);
   auto result = shared_tree{};
   auto segments = std::vector<pointer>{};
 
@@ -179,6 +179,7 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
     return next_layer;
   };
 
+  // Reduces a layer repeatedly, returning the root node of the resulting tree
   auto reduce = [&](auto&& layer) {
     while (layer.size() > 1)
       layer = reduce_once(layer);
