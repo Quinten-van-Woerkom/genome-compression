@@ -9,49 +9,6 @@
 #include <tuple>
 
 /**
- *  Range that iterates over two ranges simultaneously.
- *  TODO: Seems to be bugged for non-copyable objects, to be fixed.
- */
-namespace detail {
-template<typename Iterable1, typename Iterable2>
-class zip_class {
-public:
-  zip_class(Iterable1 it1, Iterable2 it2)
-    : it1{std::forward<Iterable1>(it1)}, it2{std::forward<Iterable2>(it2)} {}
-
-  template<typename Iterator1, typename Iterator2>
-  struct iterator {
-    Iterator1 it1;
-    Iterator2 it2;
-
-    auto operator*() { return std::forward_as_tuple(*it1, *it2); }
-    auto& operator++() { ++it1; ++it2; return *this; }
-    auto operator++(int) { auto temp = *this; ++*this; return temp; }
-    auto& operator--() { --it1; --it2; return *this; }
-    auto operator--(int) { auto temp = *this; --*this; return temp; }
-    auto operator!=(const iterator& other) { return it1 != other.it1 && it2 != other.it2; } // Stop iteration at first end
-  };
-
-  template<typename Iterator1, typename Iterator2>
-  iterator(Iterator1, Iterator2) -> iterator<Iterator1, Iterator2>;
-
-  auto begin() { return iterator{it1.begin(), it2.begin()}; }
-  auto end() { return iterator{it1.end(), it2.end()}; }
-  auto cbegin() const { return iterator{it1.cbegin(), it2.cbegin()}; }
-  auto cend() const { return iterator{it1.cend(), it2.cend()}; }
-
-private:
-  Iterable1 it1;
-  Iterable2 it2;
-};
-}
-
-template<typename Iterable1, typename Iterable2>
-auto zip(Iterable1&& it1, Iterable2&& it2) -> detail::zip_class<Iterable1&&, Iterable2&&> {
-  return {std::forward<Iterable1>(it1), std::forward<Iterable2>(it2)};
-}
-
-/**
  *  Applies a functor to each consecutive pair. If the number of elements is
  *  odd, the last remaining entry is handled on its own.
  *  e.g. (1, 2, 3, 4, 5) -> (1, 2), (3, 4), (5)
@@ -170,4 +127,25 @@ private:
 template<typename Iterable>
 auto chunks(Iterable&& iterable, std::size_t chunk_size) -> detail::chunks_class<Iterable> {
   return {std::forward<Iterable>(iterable), chunk_size};
+}
+
+
+/**
+ *  Constructs a range from an iterator pair.
+ */
+namespace detail {
+template<typename Iterator1, typename Iterator2>
+struct iterator_pair : std::pair<Iterator1, Iterator2> {
+  using std::pair<Iterator1, Iterator2>::pair;
+
+  auto begin() { return this->first; }
+  auto end() { return this->second; }
+  auto begin() const { return this->first; }
+  auto end() const { return this->second; }
+};
+}
+
+template<typename Iterator1, typename Iterator2>
+auto iterator_pair(Iterator1 begin, Iterator2 end) {
+  return detail::iterator_pair<Iterator1, Iterator2>{begin, end};
 }

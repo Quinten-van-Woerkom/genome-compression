@@ -45,38 +45,6 @@ auto test_node() -> int {
   return errors;
 }
 
-auto test_zip() -> int {
-  auto a = std::array{1, 2, 3};
-  auto b = std::array{4, 5, 6};
-  auto errors = 0;
-  auto index = 1;
-
-  for (auto [ae, be] : zip(a, b)) {
-    if (ae != index) {
-      std::cerr << "Element mismatch in a: " << ae << " != " << index << '\n';
-      ++errors;
-    }
-    if (be != index+3) {
-      std::cerr << "Element mismatch in b: " << be << " != " << index+3 << '\n';
-      ++errors;
-    }
-    ++index;
-
-    ae = 0;
-  }
-
-  for (const auto& ae : a) {
-    if (ae != 0) {
-      std::cerr << "Element mismatch in a: " << ae << " != " << 0 << '\n';
-      ++errors;
-    }
-  }
-  
-  if (!errors) std::cout << "<Zip> Finished without errors\n";
-
-  return errors;
-}
-
 auto test_chunks() -> int {
   auto a = std::array{1, 2, 3, 4, 5, 6, 7, 8};
   auto errors = 0;
@@ -166,7 +134,7 @@ auto test_tree_factory() -> int {
 }
 
 int main(int argc, char* argv[]) {
-  auto errors = test_zip() + test_chunks() + test_file_reader() + test_node() + test_tree_factory();
+  auto errors = test_chunks() + test_file_reader() + test_node() + test_tree_factory();
   if (errors) std::cerr << "Not all tests passed\n";
   return errors;
 }
