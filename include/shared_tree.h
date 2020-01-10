@@ -146,15 +146,71 @@ public:
   auto cend() { return const_iterator{*this, root.size()}; }
 
 private:
+  template<typename... Args>
+  void emplace_node(std::vector<pointer>& layer, Args&&... args);
+
+  template<typename Iterable>
+  auto reduce_once(Iterable&& layer) -> std::vector<pointer>;
+
+  template<typename Iterable>
+  auto reduce(Iterable&& layer) -> pointer;
+
   pointer root;
   std::unordered_set<node> nodes;
 };
 
 /**
+ *  Constructs and emplaces a node inside the tree during its construction.
+ *  In addition, the node is stored inside an auxiliary vector that helps
+ *  store the structure of the layer being constructed, so that upper layers
+ *  can also be constructed in full.
+ */
+template<typename... Args>
+void shared_tree::emplace_node(std::vector<pointer>& layer, Args&&... args) {
+  auto created_node = node{args...};
+  auto insertion = nodes.emplace(created_node);
+  auto& canonical_node = *(insertion.first);
+  layer.emplace_back(canonical_node);
+}
+
+/**
+ *  Reduces a layer, constructing the next by repeatedly creating pointers
+ *  to nodes consisting of each adjacent pair of lower-level pointers.
+ *  Nodes created in the process are stored inside the shared tree.
+ */
+template<typename Iterable>
+auto shared_tree::reduce_once(Iterable&& layer) -> std::vector<pointer> {
+  std::vector<pointer> next_layer;
+  next_layer.reserve(layer.size()/2 + layer.size()%2);
+
+  // Iterates over each pair, applying emplace_node.
+  // If a singular element remains, applies emplace_node to that, too.
+  foreach_pair(layer,
+    [&](const auto& left, const auto& right) { emplace_node(next_layer, left, right); },
+    [&](const auto& last) { emplace_node(next_layer, last); }
+  );
+  return next_layer;
+}
+
+/**
+ *  Fully reduces a layer to its tree representation by repeated reduction of
+ *  layers until one pointer remains. This pointer points to the tree root, and
+ *  is returned to the caller.
+ */
+template<typename Iterable>
+auto shared_tree::reduce(Iterable&& base_layer) -> pointer {
+  auto layer = reduce_once(base_layer);
+  while (layer.size() > 1)
+    layer = reduce_once(layer);
+  return layer.front();
+}
+
+/**
  *  Constructs a shared binary tree from a range of data, using spatial
  *  subdivision for common subtree merging.
- *  Reduces the data into nodes layer-by-layer, reducing each layer in segments
- *  that fit in memory.
+ *  Reduces the data into nodes segment-by-segment, reducing each segment in
+ *  full before reducing the next. This reduces the memory requirements to
+ *  those required for a single segment, at a small speed cost.
  */
 template<typename Iterable>
 auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
@@ -162,37 +218,11 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
   auto result = shared_tree{};
   auto segments = std::vector<pointer>{};
 
-  auto reduce_once = [&](auto&& layer) {
-    std::vector<pointer> next_layer;
-    next_layer.reserve(layer.size()/2 + layer.size()%2);
-
-    // Emplaces a node in the next layer, using arguments passed
-    auto emplace_node = [&](const auto&... args) {
-      auto created_node = node{args...};
-      auto insertion = result.nodes.emplace(created_node);
-      auto& canonical_node = *(insertion.first);
-      next_layer.emplace_back(canonical_node);
-    };
-
-    // Iterates over each pair, applying emplace_node.
-    // If a singular element remains, applies emplace_node to that, too.
-    foreach_pair(layer, emplace_node, emplace_node);
-    return next_layer;
-  };
-
-  // Reduces a layer repeatedly, returning the root node of the resulting tree
-  auto reduce = [&](auto&& layer) {
-    while (layer.size() > 1)
-      layer = reduce_once(layer);
-    return layer.front();
-  };
-
   for (auto segment : chunks(data, segment_size)) {
-    auto layer = reduce_once(segment);
-    auto segment_root = reduce(layer);
+    auto segment_root = result.reduce(segment);
     segments.emplace_back(segment_root);
   }
 
-  result.root = reduce(segments);
+  result.root = result.reduce(segments);
   return result;
 }

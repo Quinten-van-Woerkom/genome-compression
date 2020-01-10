@@ -52,9 +52,9 @@ auto zip(Iterable1&& it1, Iterable2&& it2) -> detail::zip_class<Iterable1&&, Ite
 }
 
 /**
- *  Applies a functor to each consecutive pair, only last remaining entry is
- *  handled on its own, if the number of elements is odd.
- *  e.g. 1, 2, 3, 4, 5 -> (1, 2), (3, 4), (5)
+ *  Applies a functor to each consecutive pair. If the number of elements is
+ *  odd, the last remaining entry is handled on its own.
+ *  e.g. (1, 2, 3, 4, 5) -> (1, 2), (3, 4), (5)
  */
 template<typename Iterable, typename BinaryFunc, typename UnaryFunc>
 void foreach_pair(Iterable&& iterable, BinaryFunc binary_func, UnaryFunc unary_func) {
