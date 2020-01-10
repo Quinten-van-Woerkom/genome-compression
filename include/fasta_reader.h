@@ -55,6 +55,7 @@ public:
 private:
   std::vector<char> buffer;
   std::ifstream file;
+  std::filesystem::path path;
   std::size_t index;
   bool end_of_file = false;
 };

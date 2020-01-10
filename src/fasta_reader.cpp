@@ -13,7 +13,7 @@
 namespace fs = std::filesystem;
 
 fasta_reader::fasta_reader(fs::path path, std::size_t buffer_size)
-  : file{path}, index{0} {
+  : file{path}, path{path}, index{0} {
   if (!file.is_open()) {
     std::cerr << "Unable to open file, aborting...\n";
     exit(1);
@@ -62,20 +62,13 @@ void fasta_reader::load_buffer() {
 }
 
 /**
- * Merely an upper bound, as headers are also considered.
- * As each character is a single base pair, the number of base pairs is
- * equivalent to the size of the file.
+ * Merely an upper bound, as comments and newline characters are also included
+ * in this count. As each byte character is a single base pair, the number of
+ * base pairs is bounded by the size of the file in bytes.
  */
 auto fasta_reader::size() -> std::size_t {
-  auto pos = file.tellg();
-  file.seekg(0);
-  file.ignore(std::numeric_limits<std::streamsize>::max());
-  auto length = file.gcount();
-  file.clear();
-  file.seekg(pos);
-  return length;
+  return std::filesystem::file_size(path);
 }
-
 
 auto read_genome(const fs::path path) -> std::vector<dna> {
   if (!fs::is_regular_file(path)) {

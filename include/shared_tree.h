@@ -6,6 +6,8 @@
 #pragma once
 
 #include <cassert>
+#include <memory>
+#include <memory_resource>
 #include <optional>
 #include <stack>
 #include <unordered_set>
@@ -105,15 +107,13 @@ class shared_tree {
 public:
   shared_tree() : root{nullptr} {}
   shared_tree(const shared_tree&) = delete; // The self-referencing inside unordered set prevents copies
-  shared_tree(shared_tree&&) = default;
+  shared_tree(shared_tree&& other) = default;
 
   template<typename Iterable>
   static auto create_balanced(Iterable&& data) -> shared_tree;
 
   // Number of nodes stored
-  auto size() const -> std::size_t { return nodes.size(); }
-
-  // Length of the data sequence
+  auto node_count() const -> std::size_t { return nodes.size(); }
   auto width() const -> std::size_t { return root.size(); }
 
   auto operator[](std::size_t index) const -> const dna&;
@@ -167,7 +167,7 @@ auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
     next_layer.reserve(layer.size()/2 + layer.size()%2);
 
     // Emplaces a node in the next layer, using arguments passed
-    auto emplace_node = [&](auto... args) {
+    auto emplace_node = [&](const auto&... args) {
       auto created_node = node{args...};
       auto insertion = result.nodes.emplace(created_node);
       auto& canonical_node = *(insertion.first);
