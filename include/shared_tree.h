@@ -193,13 +193,13 @@ auto shared_tree::reduce_once(Iterable&& layer) -> std::vector<pointer> {
 }
 
 /**
- *  Fully reduces a layer to its tree representation by repeated reduction of
- *  layers until one pointer remains. This pointer points to the tree root, and
- *  is returned to the caller.
+ *  Fully reduces a segment to its tree representation by repeated reduction of
+ *  layers until one pointer remains. This pointer points to the root of the
+ *  the resulting subtree, and is returned to the caller.
  */
 template<typename Iterable>
-auto shared_tree::reduce(Iterable&& base_layer) -> pointer {
-  auto layer = reduce_once(base_layer);
+auto shared_tree::reduce(Iterable&& segment) -> pointer {
+  auto layer = reduce_once(segment);
   while (layer.size() > 1)
     layer = reduce_once(layer);
   return layer.front();
@@ -216,13 +216,13 @@ template<typename Iterable>
 auto shared_tree::create_balanced(Iterable&& data) -> shared_tree {
   constexpr auto segment_size = (1u<<29);
   auto result = shared_tree{};
-  auto segments = std::vector<pointer>{};
+  auto subroots = std::vector<pointer>{}; // Roots of all reduced segments
 
   for (auto segment : chunks(data, segment_size)) {
-    auto segment_root = result.reduce(segment);
-    segments.emplace_back(segment_root);
+    auto subroot = result.reduce(segment);
+    subroots.emplace_back(subroot);
   }
 
-  result.root = result.reduce(segments);
+  result.root = result.reduce(subroots);
   return result;
 }
