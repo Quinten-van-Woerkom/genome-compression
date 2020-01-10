@@ -6,8 +6,6 @@
 #pragma once
 
 #include <cassert>
-#include <memory>
-#include <memory_resource>
 #include <optional>
 #include <stack>
 #include <unordered_set>
