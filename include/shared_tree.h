@@ -169,7 +169,6 @@ private:
 template<typename... Args>
 void shared_tree::emplace_node(std::vector<pointer>& layer, Args&&... args) {
   auto created_node = node{pointer{args}...};
-  // auto insertion = indices.try_emplace(created_node, nodes.size()+1);
   auto insertion = indices.emplace(created_node, nodes.size()+1);
   if (insertion.second) nodes.emplace_back(created_node);
   auto index = (*insertion.first).second;
