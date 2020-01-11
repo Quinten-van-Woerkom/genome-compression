@@ -11,18 +11,21 @@
 auto pointer::data() const -> dna {
   assert(!empty() && "Trying to access null pointer.");
   assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf.");
-  return dna{raw};
+  return dna{information};
 }
 
 auto pointer::index() const -> std::size_t {
   assert(!empty() && "Trying to access null pointer.");
   assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf.");
-  return raw;
+  return information;
 }
 
 
 /******************************************************************************
  *  Genome, constructed as a balanced shared tree.
+ */
+/**
+ *  Returns the number of child leaves the node pointed to has.
  */
 auto shared_tree::children(pointer parent) const -> std::size_t {
   if (parent.is_leaf()) return 1;
@@ -37,9 +40,7 @@ auto shared_tree::children(pointer parent) const -> std::size_t {
 auto shared_tree::iterator::operator++() -> iterator& {
   while (!stack.empty()) {
     stack.pop_back();
-    if (stack.back().is_leaf()) {
-      return *this;
-    }
+    if (stack.back().is_leaf()) return *this;
 
     auto node = access(stack.back());
     stack.pop_back();
@@ -58,10 +59,15 @@ auto shared_tree::iterator::access(pointer pointer) const -> const node& {
   return nodes[index-1];
 }
 
+/**
+ *  Since the pointers stored inside nodes are not sufficient without a
+ *  reference to the data structure holding them, the accessor logic must
+ *  reside in the shared tree.
+ */
 auto shared_tree::operator[](std::size_t index) const -> dna {
   auto current = root;
   while (!current.is_leaf()) {
-    const auto& node = nodes[current.index()-1];
+    const auto& node = access(current);
     const auto left_size = children(node.left());
     if (index < left_size) {
       current = node.left();
@@ -73,6 +79,10 @@ auto shared_tree::operator[](std::size_t index) const -> dna {
   return current.data();
 }
 
+/**
+ *  Returns the node pointed to by the passed pointer.
+ *  Accessing a nullptr results in undefined behaviour.
+ */
 auto shared_tree::access(pointer pointer) const -> const node& {
   const auto index = pointer.index();
   return nodes[index-1];
