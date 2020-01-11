@@ -34,16 +34,21 @@ public:
   pointer(dna dna) : leaf{true}, information{dna.to_ullong()} {}
   pointer(std::nullptr_t) : leaf{false}, information{0} {}
 
-  operator std::size_t() const noexcept { return detail::hash(leaf, information); }
-
   bool operator==(const pointer& other) const noexcept {
     return leaf == other.leaf && information == other.information;
   }
+
+  bool operator==(std::nullptr_t) const noexcept {
+    return leaf == false && information == 0;
+  }
+
+  bool operator!=(const pointer& other) const noexcept { return !(*this == other); }
 
   auto is_leaf() const noexcept -> bool { return leaf; }
   auto empty() const noexcept -> bool { return !is_leaf() && information == 0; }
   auto data() const -> dna;
   auto index() const -> std::size_t;
+  auto raw() const -> std::size_t { return information; }
 
 private:
   bool leaf : 1;
@@ -56,6 +61,7 @@ static inline auto operator<<(std::ostream& os, const pointer& p) -> std::ostrea
   else return os << "node: " << p.index();
 }
 
+
 /******************************************************************************
  *  Node in a shared tree. Children are either other nodes or leaf nodes,
  *  containing the actual data stored.
@@ -67,8 +73,6 @@ public:
 
   auto left() const -> const pointer& { return children[0]; }
   auto right() const -> const pointer& { return children[1]; }
-
-  auto hash() const noexcept -> std::size_t { return detail::hash(children[0], children[1]); }
   auto empty() const noexcept -> std::size_t { return children[0].empty() && children[1].empty(); }
 
   bool operator==(const node& other) const noexcept {
@@ -83,10 +87,23 @@ static inline auto operator<<(std::ostream& os, const node& n) -> std::ostream& 
   return os << "node<" << n.left() << ", " << n.right() << ">";
 }
 
+
+/******************************************************************************
+ *  Hash functions for the pointer and node classes, so that they can be used
+ *  in hash tables.
+ */
 namespace std {
+  template<> struct hash<pointer> {
+    auto operator()(const pointer& p) const noexcept -> std::size_t {
+      return detail::hash(p.is_leaf(), p.raw());
+    }
+  };
+
   template<> struct hash<node> {
     auto operator()(const node& n) const noexcept -> std::size_t {
-      return n.hash();
+      return detail::hash(
+        std::hash<pointer>()(n.left()),
+        std::hash<pointer>()(n.right()));
     }
   };
 }
@@ -111,12 +128,7 @@ public:
   auto operator[](std::size_t index) const -> dna;
 
   struct iterator {
-    iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
-      if (root != pointer{nullptr}) {
-        stack.emplace_back(root);
-        next_leaf();
-      }
-    }
+    iterator(const std::vector<node>& nodes, pointer root);
 
     auto operator*() const { return stack.back().data(); }
     auto operator++() -> iterator&;

@@ -35,6 +35,17 @@ auto shared_tree::children(pointer parent) const -> std::size_t {
 }
 
 /**
+ *  Constructs an iterator over the shared tree.
+ *  A nullptr argument for the root indicates an end iterator.
+ */
+shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
+  if (root != nullptr) {
+    stack.emplace_back(root);
+    next_leaf();
+  }
+}
+
+/**
  *  Advances the iterator to the first node on the right of the current node.
  *  To achieve this, pops the last-found leaf off the stack and recurses on the
  *  remaining stack members.
