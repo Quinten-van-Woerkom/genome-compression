@@ -31,29 +31,29 @@ class pointer;
 class pointer {
 public:
   // And index of 0 is used to represent a nullptr, and absence of data
-  pointer(std::size_t index) : leaf_flag{false}, data{index} {}
-  pointer(dna dna) : leaf_flag{true}, data{dna.to_ullong()} {}
-  pointer(std::nullptr_t) : leaf_flag{false}, data{0} {}
+  pointer(std::size_t index) : leaf_flag{false}, raw{index} {}
+  pointer(dna dna) : leaf_flag{true}, raw{dna.to_ullong()} {}
+  pointer(std::nullptr_t) : leaf_flag{false}, raw{0} {}
 
-  operator std::size_t() const noexcept { return detail::hash(leaf_flag, data); }  // TODO: Check if this is really necessary.
+  operator std::size_t() const noexcept { return detail::hash(leaf_flag, raw); }  // TODO: Check if this is really necessary.
 
   bool operator==(const pointer& other) const noexcept {
-    return leaf_flag == other.leaf_flag && data == other.data;
+    return leaf_flag == other.leaf_flag && raw == other.raw;
   }
 
   auto is_leaf() const noexcept -> bool { return leaf_flag; }
-  auto empty() const noexcept -> bool { return !is_leaf() && data == 0; }
-  auto leaf() const -> dna;
+  auto empty() const noexcept -> bool { return !is_leaf() && raw == 0; }
+  auto data() const -> dna;
   auto index() const -> std::size_t;
 
 private:
   bool leaf_flag : 1;
-  std::size_t data : 60;
+  std::size_t raw : 60;
 };
 
-static auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
+static inline auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
   if (p.empty()) return os << "empty";
-  else if (p.is_leaf()) return os << "leaf: " << p.leaf();
+  if (p.is_leaf()) return os << "leaf: " << p.data();
   else return os << "node: " << p.index();
 }
 
@@ -119,7 +119,7 @@ public:
       }
     }
 
-    auto operator*() const { return stack.back().leaf(); }
+    auto operator*() const { return stack.back().data(); }
     auto operator++() -> iterator&;
     auto operator!=(const iterator& other) const { return !stack.empty(); }
 

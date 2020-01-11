@@ -23,8 +23,8 @@ auto test_node() -> int {
     ++errors;
   }
 
-  if (leaf.leaf() != data) {
-    std::cerr << "<Tree node> Test failed: pointer{data}.leaf() != data: " << leaf.leaf() << "!=" << data << '\n';
+  if (leaf.data() != data) {
+    std::cerr << "<Tree node> Test failed: pointer{data}.leaf() != data: " << leaf.data() << "!=" << data << '\n';
     ++errors;
   }
 

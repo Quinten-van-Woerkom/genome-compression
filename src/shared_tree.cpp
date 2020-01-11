@@ -8,16 +8,16 @@
 /******************************************************************************
  *  Annotated pointer to a node in the tree.
  */
-auto pointer::leaf() const -> dna {
+auto pointer::data() const -> dna {
   assert(!empty() && "Trying to access null pointer.");
   assert(is_leaf() && "Trying to interpret a non-leaf node as a leaf.");
-  return dna{data};
+  return dna{raw};
 }
 
 auto pointer::index() const -> std::size_t {
   assert(!empty() && "Trying to access null pointer.");
   assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf.");
-  return data;
+  return raw;
 }
 
 
@@ -70,7 +70,7 @@ auto shared_tree::operator[](std::size_t index) const -> dna {
       current = node.right();
     }
   }
-  return current.leaf();
+  return current.data();
 }
 
 auto shared_tree::access(pointer pointer) const -> const node& {
