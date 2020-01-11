@@ -114,7 +114,7 @@ public:
     iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
       if (root != pointer{nullptr}) {
         stack.emplace_back(root);
-        ++(*this);
+        next_leaf();
       }
     }
 
@@ -123,6 +123,7 @@ public:
     auto operator!=(const iterator& other) const { return !stack.empty(); }
 
     auto access(pointer pointer) const -> const node&;
+    void next_leaf();
 
     const std::vector<node>& nodes;
     std::vector<pointer> stack;

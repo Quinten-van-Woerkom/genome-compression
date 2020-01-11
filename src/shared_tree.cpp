@@ -36,19 +36,31 @@ auto shared_tree::children(pointer parent) const -> std::size_t {
 
 /**
  *  Advances the iterator to the first node on the right of the current node.
+ *  To achieve this, pops the last-found leaf off the stack and recurses on the
+ *  remaining stack members.
  */
 auto shared_tree::iterator::operator++() -> iterator& {
-  while (!stack.empty()) {
-    stack.pop_back();
-    if (stack.back().is_leaf()) return *this;
+  stack.pop_back();
+  next_leaf();
+  return *this;
+}
 
-    auto node = access(stack.back());
+/**
+ *  Iterates over the tree nodes until a leaf is found, or the stack is empty.
+ *  For each encountered node, determines if it is a leaf. If not, its children
+ *  are added to the stack and we apply the same procedure to them, starting
+ *  with the left child.
+ */
+void shared_tree::iterator::next_leaf() {
+  while (!stack.empty()) {
+    auto top = stack.back();
+    if (top.is_leaf()) return;
+
+    auto node = access(top);
     stack.pop_back();
     if (auto right = node.right(); !right.empty()) stack.emplace_back(right);
     if (auto left = node.left(); !left.empty()) stack.emplace_back(left);
   }
-
-  return *this;
 }
 
 /**
