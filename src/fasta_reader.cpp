@@ -43,8 +43,9 @@ void fasta_reader::load_buffer() {
 
   while (position < buffer.size()-1) {
     file.clear();
-    if (file.peek() == '>' || file.peek() == '\n')
+    if (file.peek() == '>' || file.peek() == '\n') {
       file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
     file.getline(&buffer[position], buffer.size() - position);
 
     // When a newline is found: failbit == false, actual line size = gcount() - 1

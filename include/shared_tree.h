@@ -12,6 +12,8 @@
 #include <utility>
 #include <vector>
 
+#include "robin_hood.h"
+
 #include "dna.h"
 #include "utility.h"
 
@@ -114,21 +116,20 @@ public:
   }
 
   struct iterator {
-    iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes}, current{root} {
+    iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
       if (root != pointer{nullptr}) {
         stack.emplace_back(root);
         ++(*this);
       }
     }
 
-    auto operator*() const { return current.leaf(); }
+    auto operator*() const { return stack.back().leaf(); }
     auto operator++() -> iterator&;
-    auto operator!=(const iterator& other) const { return nodes != other.nodes || current != other.current; }
+    auto operator!=(const iterator& other) const { return nodes != other.nodes || stack != other.stack; }
 
     auto access(pointer pointer) const -> const node&;
 
     const std::vector<node>& nodes;
-    pointer current;
     std::vector<pointer> stack;
   };
 
@@ -159,7 +160,7 @@ private:
   auto reduce(Iterable&& layer) -> pointer;
 
   pointer root;
-  std::unordered_map<node, std::size_t> indices;
+  robin_hood::unordered_flat_map<node, std::size_t> indices;
   std::vector<node> nodes;
 };
 
@@ -172,7 +173,8 @@ private:
 template<typename... Args>
 void shared_tree::emplace_node(std::vector<pointer>& layer, Args&&... args) {
   auto created_node = node{pointer{args}...};
-  auto insertion = indices.try_emplace(created_node, nodes.size()+1);
+  // auto insertion = indices.try_emplace(created_node, nodes.size()+1);
+  auto insertion = indices.emplace(created_node, nodes.size()+1);
   if (insertion.second) nodes.emplace_back(created_node);
   auto index = (*insertion.first).second;
   layer.emplace_back(index);

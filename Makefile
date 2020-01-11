@@ -1,7 +1,7 @@
 CC=gcc
 CXX=clang++
 RM=rm -f
-CPPFLAGS=-Wall -std=c++17 -Iinclude
+CPPFLAGS=-Wall -std=c++17 -Iinclude -Iexternal
 ADDED_CPPFLAGS=
 LDFLAGS=-lstdc++fs
 LDLIBS=

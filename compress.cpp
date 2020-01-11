@@ -29,11 +29,13 @@ int main(int argc, char* argv[]) {
   auto end = std::chrono::high_resolution_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
+  std::cout << "Done!\n" << std::flush;
+
   auto compressed_size = compressed.node_count();
   auto compressed_width = compressed.width();
   auto file_size = std::filesystem::file_size(path);
 
-  std::cout << "Done!\n"
+  std::cout
     << "Number of data units: " << compressed_width << '\n'
     << "Number of base pairs: " << compressed_width*dna::size() << '\n'
     << "File size: " << file_size << " bytes\n"

@@ -25,14 +25,10 @@ auto pointer::index() const -> std::size_t {
  *  Genome, constructed as a balanced shared tree.
  */
 auto shared_tree::children(pointer parent) const -> std::size_t {
-  std::size_t total = 0llu;
-
-  for (auto node : subtree(parent)) {
-    ++total;
-    (void)node;
-  }
-
-  return total;
+  if (parent.is_leaf()) return 1;
+  if (parent.empty()) return 0;
+  auto node = access(parent);
+  return children(node.left()) + children(node.right());
 }
 
 /**
@@ -40,22 +36,17 @@ auto shared_tree::children(pointer parent) const -> std::size_t {
  */
 auto shared_tree::iterator::operator++() -> iterator& {
   while (!stack.empty()) {
-    auto next = stack.back();
     stack.pop_back();
-
-    if (next.is_leaf()) {
-      current = next;
+    if (stack.back().is_leaf()) {
       return *this;
     }
 
-    auto node = access(next);
-    if (auto right = node.right(); !right.empty())
-      stack.emplace_back(right);
-    if (auto left = node.left(); !left.empty())
-      stack.emplace_back(left);
+    auto node = access(stack.back());
+    stack.pop_back();
+    if (auto right = node.right(); !right.empty()) stack.emplace_back(right);
+    if (auto left = node.left(); !left.empty()) stack.emplace_back(left);
   }
 
-  current = nullptr;
   return *this;
 }
 

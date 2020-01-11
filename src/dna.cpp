@@ -13,9 +13,18 @@
 
 namespace fs = std::filesystem;
 
+bool valid_nac(char code) {
+  code = std::toupper(code);
+  return code == 'A' || code == 'C' || code == 'G' ||code == 'T'
+    || code == 'R' || code == 'Y' || code == 'K' || code == 'M'
+    || code == 'S' || code == 'W' || code == 'B' || code == 'D'
+    || code == 'H' || code == 'V' || code == 'N' || code == '-';
+}
+
 dna::dna(const std::string_view strand) {
   assert(strand.size() == length);
   for (auto i = 0u; i < length; ++i) {
+    if (!valid_nac(strand[i])) std::cout << "Invalid strand: " << strand << '\n';
     set_nucleotide(i, strand[i]);
   }
 }
@@ -42,7 +51,6 @@ auto dna::nucleotide(std::size_t index) const -> char {
     case nac::C: return 'C';
     case nac::G: return 'G';
     case nac::T: return 'T';
-    case nac::U: return 'U';
     case nac::R: return 'R';
     case nac::Y: return 'Y';
     case nac::K: return 'K';
@@ -84,7 +92,6 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
     case 'C': set_internal(index, nac::C); break;
     case 'G': set_internal(index, nac::G); break;
     case 'T': set_internal(index, nac::T); break;
-    case 'U': set_internal(index, nac::U); break;
     case 'R': set_internal(index, nac::R); break;
     case 'Y': set_internal(index, nac::Y); break;
     case 'K': set_internal(index, nac::K); break;
@@ -94,6 +101,7 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
     case 'B': set_internal(index, nac::B); break;
     case 'D': set_internal(index, nac::D); break;
     case 'H': set_internal(index, nac::H); break;
+    case 'V': set_internal(index, nac::V); break;
     case 'N': set_internal(index, nac::N); break;
     case '-': set_internal(index, nac::Indeterminate); break;
     default: {
