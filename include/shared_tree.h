@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <array>
 #include <cassert>
 #include <optional>
 #include <stack>
@@ -62,24 +63,24 @@ static auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
  */
 class node {
 public:
-  node(pointer left, pointer right) : left_{left}, right_{right} {}
-  node(pointer left) : left_{left}, right_{nullptr} {}
-  
-  auto left() const -> const pointer& { return left_; }
-  auto right() const -> const pointer& { return right_; }
-  
-  auto hash() const noexcept -> std::size_t { return detail::hash(left_, right_); }
-  auto empty() const noexcept -> bool { return left_.empty() && right_.empty(); }
+  node(pointer left, pointer right) : children{left, right} {}
+  node(pointer left) : children{left, nullptr} {}
+
+  auto left() const -> const pointer& { return children[0]; }
+  auto right() const -> const pointer& { return children[1]; }
+
+  auto hash() const noexcept -> std::size_t { return detail::hash(children[0], children[1]); }
+  auto empty() const noexcept -> std::size_t { return children[0].empty() && children[1].empty(); }
 
   bool operator==(const node& other) const noexcept {
-    return left_ == other.left_ && right_ == other.right_;
+    return children[0] == other.children[0] && children[1] == other.children[1];
   }
 
 private:
-  pointer left_, right_;
+  std::array<pointer, 2> children;
 };
 
-static auto operator<<(std::ostream& os, const node& n) -> std::ostream& {
+static inline auto operator<<(std::ostream& os, const node& n) -> std::ostream& {
   return os << "node<" << n.left() << ", " << n.right() << ">";
 }
 
@@ -109,11 +110,6 @@ public:
   auto children(pointer parent) const -> std::size_t;
 
   auto operator[](std::size_t index) const -> dna;
-  
-  void print_unique() const {
-    for (const auto& node : nodes)
-        std::cout << node << '\n';
-  }
 
   struct iterator {
     iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
@@ -125,7 +121,7 @@ public:
 
     auto operator*() const { return stack.back().leaf(); }
     auto operator++() -> iterator&;
-    auto operator!=(const iterator& other) const { return nodes != other.nodes || stack != other.stack; }
+    auto operator!=(const iterator& other) const { return !stack.empty(); }
 
     auto access(pointer pointer) const -> const node&;
 
