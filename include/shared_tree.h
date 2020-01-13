@@ -38,7 +38,10 @@ public:
     return leaf == other.leaf && information == other.information;
   }
 
-  bool operator==(std::nullptr_t) const noexcept { return empty(); }
+  bool operator==(std::nullptr_t) const noexcept {
+    return leaf == false && information == 0;
+  }
+
   bool operator!=(const pointer& other) const noexcept { return !(*this == other); }
 
   auto is_leaf() const noexcept -> bool { return leaf; }
@@ -111,6 +114,8 @@ namespace std {
 class shared_tree {
 public:
   shared_tree() : root{nullptr} {}
+  shared_tree(const shared_tree&) = delete; // The self-referencing inside unordered set prevents copies
+  shared_tree(shared_tree&& other) = default;
 
   template<typename Iterable>
   static auto create_balanced(Iterable&& data) -> shared_tree;

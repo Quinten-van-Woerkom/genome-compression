@@ -8,7 +8,7 @@
 #include <iostream>
 #include <tuple>
 
-/******************************************************************************
+/**
  *  Applies a functor to each consecutive pair. If the number of elements is
  *  odd, the last remaining entry is handled on its own.
  *  e.g. (1, 2, 3, 4, 5) -> (1, 2), (3, 4), (5)
@@ -27,7 +27,7 @@ void foreach_pair(Iterable&& iterable, BinaryFunc binary_func, UnaryFunc unary_f
   }
 }
 
-/******************************************************************************
+/**
  *  Hash function for an arbitrary set of arguments.
  *  Requires only that each argument be convertible to std::size_t.
  */
@@ -50,7 +50,7 @@ template <typename... Args> auto hash(const Args&... args) noexcept -> std::size
 }
 }
 
-/******************************************************************************
+/**
  *  Compose unsigned integers from bits, and decompose them in their bits.
  *  Bits are order from least significant to most significant bit.
  */
@@ -74,7 +74,7 @@ constexpr auto to_bits(T value) noexcept -> std::array<bool, 8*sizeof(T)> {
 }
 
 
-/******************************************************************************
+/**
  *  Range adaptor that returns the range divided into chunks.
  */
 namespace detail {
@@ -130,7 +130,7 @@ auto chunks(Iterable&& iterable, std::size_t chunk_size) -> detail::chunks_class
 }
 
 
-/******************************************************************************
+/**
  *  Constructs a range from an iterator pair.
  */
 namespace detail {
@@ -148,22 +148,4 @@ struct iterator_pair : std::pair<Iterator1, Iterator2> {
 template<typename Iterator1, typename Iterator2>
 auto iterator_pair(Iterator1 begin, Iterator2 end) {
   return detail::iterator_pair<Iterator1, Iterator2>{begin, end};
-}
-
-
-/******************************************************************************
- *  Parameter pack-supporting min.
- */
-template<typename T>
-auto variadic_min(T&& value) -> decltype(auto)
-{
-  return std::forward<T>(value);
-}
-
-template<typename T1, typename T2, typename... Ts>
-auto variadic_min(T1&& value1, T2&& value2, Ts&&... values) -> decltype(auto)
-{
-  return value2 < value1
-  ? variadic_min(value2, std::forward<Ts>(values)...)
-  : variadic_min(value1, std::forward<Ts>(values)...);
 }
