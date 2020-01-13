@@ -30,34 +30,31 @@ class pointer;
  */
 class pointer {
 public:
-  pointer(std::size_t index) : leaf{false}, information{index} {}
-  pointer(dna dna) : leaf{true}, information{dna.to_ullong()} {}
-  pointer(std::nullptr_t) : leaf{false}, information{0} {}
+  pointer(std::size_t index) : leaf_node{false}, information{index} {}
+  pointer(dna dna) : leaf_node{true}, information{dna.to_ullong()} {}
+  pointer(std::nullptr_t) : leaf_node{false}, information{0} {}
 
   bool operator==(const pointer& other) const noexcept {
-    return leaf == other.leaf && information == other.information;
+    return leaf_node == other.leaf_node && information == other.information;
   }
 
-  bool operator==(std::nullptr_t) const noexcept {
-    return leaf == false && information == 0;
-  }
-
+  bool operator==(std::nullptr_t) const noexcept { return empty(); }
   bool operator!=(const pointer& other) const noexcept { return !(*this == other); }
 
-  auto is_leaf() const noexcept -> bool { return leaf; }
+  auto is_leaf() const noexcept -> bool { return leaf_node; }
   auto empty() const noexcept -> bool { return !is_leaf() && information == 0; }
-  auto data() const -> dna;
+  auto leaf() const -> dna;
   auto index() const -> std::size_t;
-  auto raw() const -> std::size_t { return information; }
+  auto data() const -> std::size_t { return information; }
 
 private:
-  bool leaf : 1;
+  bool leaf_node : 1;
   std::size_t information : 60;
 };
 
 static inline auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
   if (p.empty()) return os << "empty";
-  if (p.is_leaf()) return os << "leaf: " << p.data();
+  if (p.is_leaf()) return os << "leaf: " << p.leaf();
   else return os << "node: " << p.index();
 }
 
@@ -95,7 +92,7 @@ static inline auto operator<<(std::ostream& os, const node& n) -> std::ostream& 
 namespace std {
   template<> struct hash<pointer> {
     auto operator()(const pointer& p) const noexcept -> std::size_t {
-      return detail::hash(p.is_leaf(), p.raw());
+      return detail::hash(p.is_leaf(), p.data());
     }
   };
 
@@ -130,7 +127,7 @@ public:
   struct iterator {
     iterator(const std::vector<node>& nodes, pointer root);
 
-    auto operator*() const { return stack.back().data(); }
+    auto operator*() const { return stack.back().leaf(); }
     auto operator++() -> iterator&;
     auto operator!=(const iterator& other) const { return !stack.empty(); }
 
