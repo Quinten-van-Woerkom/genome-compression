@@ -47,7 +47,7 @@ auto to_nac(char nucleotide) -> nac {
   }
 }
 
-constexpr auto from_nac(nac code) -> char {
+constexpr auto from_nac(nac code) noexcept -> char {
   switch (code) {
     case nac::A: return 'A';
     case nac::C: return 'C';
@@ -72,7 +72,7 @@ constexpr auto from_nac(nac code) -> char {
   }
 }
 
-constexpr auto transpose(nac code) -> nac {
+constexpr auto transpose(nac code) noexcept -> nac {
   switch (code) {
     case nac::A: return nac::T;
     case nac::T: return nac::A;
@@ -97,15 +97,44 @@ constexpr auto transpose(nac code) -> nac {
   }
 }
 
+/**
+ * Constructors.
+ */
 dna::dna(const std::string_view strand) {
   assert(strand.size() == length);
-  for (auto i = 0u; i < length; ++i) {
-    if (!valid_nac(strand[i])) std::cout << "Invalid strand: " << strand << '\n';
+  for (auto i = 0u; i < length; ++i)
     set_nucleotide(i, strand[i]);
-  }
 }
 
 dna::dna(unsigned long long value) noexcept : nucleotides{value} {}
+
+/**
+ *  Returns a random-initialised DNA strand. Used for testing purposes.
+ */
+auto dna::random(unsigned seed) -> dna {
+  std::srand(seed);
+  return dna{static_cast<unsigned long long>(rand())};
+}
+
+/**
+ * Returns a transposed version of the DNA strand.
+ */
+auto dna::transposed() const noexcept -> dna {
+  auto result = *this;
+  for (auto i = 0u; i < dna::size(); ++i)
+    result.set_nucleotide(i, transpose(code(i)));
+  return result;
+}
+
+/**
+ * Returns a mirrored version of the DNA strand.
+ */
+auto dna::mirrored() const noexcept -> dna {
+  auto result = *this;
+  for (auto i = 0u; i < dna::size(); ++i)
+    result.set_nucleotide(i, code(dna::size() - i - 1));
+  return result;
+}
 
 /**
  *  Operator[] overload that redirects to return the nucleotide located at
@@ -116,13 +145,22 @@ auto dna::operator[](std::size_t index) const -> char {
 }
 
 /**
+ * Returns the nucleic acid code of the nucleotide located at <index>
+ * Requires that <index> is smaller than <length>.
+ */
+auto dna::code(std::size_t index) const -> nac {
+  assert(index < length);
+  return static_cast<nac>(from_bits(nucleotides[4*index], nucleotides[4*index+1], nucleotides[4*index+2], nucleotides[4*index+3]));
+}
+
+/**
  *  Returns the nucleotide located at index <index>.
  *  Requires that <index> is smaller than <length>.
  */
 auto dna::nucleotide(std::size_t index) const -> char {
   assert(index < length);
-  auto nucleotide = static_cast<nac>(from_bits(nucleotides[4*index], nucleotides[4*index+1], nucleotides[4*index+2], nucleotides[4*index+3]));
-  return from_nac(nucleotide);
+  auto nac = code(index);
+  return from_nac(nac);
 }
 
 /**
@@ -130,9 +168,12 @@ auto dna::nucleotide(std::size_t index) const -> char {
  *  <nucleotide>.
  */
 void dna::set_nucleotide(std::size_t index, char nucleotide) {
-  assert(index < length);
-
   auto code = to_nac(nucleotide);
+  set_nucleotide(index, code);
+}
+
+void dna::set_nucleotide(std::size_t index, nac code) {
+  assert(index < length);
   auto bits = to_bits(static_cast<unsigned char>(code));
   nucleotides.set(4*index, std::get<0>(bits));
   nucleotides.set(4*index+1, std::get<1>(bits));
@@ -144,8 +185,7 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
  *  Output stream operator that prints the nucleotides.
  */
 auto operator<<(std::ostream& os, const dna& dna) -> std::ostream& {
-  for (auto i = 0u; i < dna.size(); ++i) {
+  for (auto i = 0u; i < dna.size(); ++i)
     os << dna.nucleotide(i);
-  }
   return os;
 }

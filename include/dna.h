@@ -28,45 +28,34 @@ public:
   dna(const std::string_view strand);
   dna(unsigned long long value) noexcept;
 
-  // Only for testing purposes
-  static auto random(unsigned seed = 0) -> dna {
-    dna result{};
-    std::srand(seed);
-    for (auto i = 0u; i < result.nucleotides.size(); ++i) {
-      result.nucleotides.set(i, static_cast<bool>(std::rand()%2));
-    }
-    return result;
-  }
+  static auto random(unsigned seed = 0) -> dna;
+  static constexpr auto size() noexcept -> std::size_t { return length; }
 
-  auto transposed() const -> dna;
-  auto mirrored() const -> dna;
-
+  auto transposed() const noexcept -> dna;
+  auto mirrored() const noexcept -> dna;
   auto to_ullong() const { return nucleotides.to_ullong(); }
 
   auto operator[](std::size_t index) const -> char;
+  auto code(std::size_t index) const -> nac;
   auto nucleotide(std::size_t index) const -> char;
   
-  static constexpr auto size() noexcept -> std::size_t { return length; }
-
-  friend auto operator<<(std::ostream& os, const dna& dna) -> std::ostream&;
-
-  auto hash() const noexcept -> std::size_t { return std::hash<decltype(nucleotides)>{}(nucleotides); }
   auto operator==(const dna& other) const noexcept -> bool { return nucleotides == other.nucleotides; }
   auto operator!=(const dna& other) const noexcept -> bool { return nucleotides != other.nucleotides; }
 
 private:
-  dna() {}  // Does not initialize, useful only for testing purposes
-
   void set_nucleotide(std::size_t index, char nucleotide);
+  void set_nucleotide(std::size_t index, nac code);
 
   std::bitset<4*length> nucleotides;
 };
+
+auto operator<<(std::ostream& os, const dna& dna) -> std::ostream&;
 
 namespace std {
   template<>
   struct hash<dna> {
     auto operator()(const dna& n) const noexcept -> std::size_t {
-      return n.hash();
+      return std::hash<unsigned long long>{}(n.to_ullong());
     }
   };
 }
