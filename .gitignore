@@ -37,5 +37,8 @@ local_alignment
 #Jetbrains project file
 .idea
 
+#VS Code files
+.vscode/
+
 #But do not exclude Makefile
 !Makefile
