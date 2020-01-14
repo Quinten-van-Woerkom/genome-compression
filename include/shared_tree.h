@@ -157,10 +157,10 @@ public:
   using const_iterator = iterator;
 
   auto subtree(pointer parent) const {
-    // return iterator_pair(
-    //   iterator{nodes, parent},
-    //   iterator{nodes, nullptr}
-    // );
+    return iterator_pair(
+      iterator{nodes, parent},
+      iterator{nodes, nullptr}
+    );
   }
 
   auto begin() { return iterator{nodes, root}; }
