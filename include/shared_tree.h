@@ -35,19 +35,15 @@ public:
   pointer(dna dna) : information{dna.to_ullong()}, leaf_node{true} {}
   pointer(std::nullptr_t) : information{0}, mirror{false}, transpose{false}, leaf_node{false} {}
 
-  bool operator==(const pointer& other) const noexcept {
-    return leaf_node == other.leaf_node && information == other.information;
-  }
-
-  bool operator==(std::nullptr_t) const noexcept { return to_ullong() == 0; }
-  bool operator!=(const pointer& other) const noexcept { return !(*this == other); }
+  bool operator==(const pointer& other) const noexcept { return to_ullong() == other.to_ullong(); }
+  bool operator!=(const pointer& other) const noexcept { return to_ullong() != other.to_ullong(); }
 
   auto is_leaf() const noexcept -> bool { return leaf_node; }
-  auto empty() const noexcept -> bool { return !is_leaf() && information == 0; }
-  auto leaf() const -> dna;
-  auto index() const -> std::uint64_t;
+  auto empty() const noexcept -> bool { return *this == nullptr; }
   auto data() const -> std::uint64_t { return information; }
   auto to_ullong() const noexcept -> unsigned long long;
+  auto leaf() const -> dna;
+  auto index() const -> std::uint64_t;
 
 private:
   std::uint64_t information : 60;
