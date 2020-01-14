@@ -31,15 +31,15 @@ class pointer;
  */
 class pointer {
 public:
-  pointer(std::size_t index) : leaf_node{false}, information{index} {}
-  pointer(dna dna) : leaf_node{true}, information{dna.to_ullong()} {}
-  pointer(std::nullptr_t) : leaf_node{false}, information{0} {}
+  pointer(std::size_t index) : information{index}, leaf_node{false} {}
+  pointer(dna dna) : information{dna.to_ullong()}, leaf_node{true} {}
+  pointer(std::nullptr_t) : information{0}, mirror{false}, transpose{false}, leaf_node{false} {}
 
   bool operator==(const pointer& other) const noexcept {
     return leaf_node == other.leaf_node && information == other.information;
   }
 
-  bool operator==(std::nullptr_t) const noexcept { return empty(); }
+  bool operator==(std::nullptr_t) const noexcept { return to_ullong() == 0; }
   bool operator!=(const pointer& other) const noexcept { return !(*this == other); }
 
   auto is_leaf() const noexcept -> bool { return leaf_node; }
@@ -47,12 +47,13 @@ public:
   auto leaf() const -> dna;
   auto index() const -> std::uint64_t;
   auto data() const -> std::uint64_t { return information; }
+  auto to_ullong() const noexcept -> unsigned long long;
 
 private:
-  bool leaf_node : 1;
+  std::uint64_t information : 60;
   bool mirror : 1;
   bool transpose : 1;
-  std::uint64_t information : 60;
+  bool leaf_node : 1;
 };
 
 static inline auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
@@ -93,17 +94,12 @@ static inline auto operator<<(std::ostream& os, const node& n) -> std::ostream& 
  *  in hash tables.
  */
 namespace std {
-  template<> struct hash<pointer> {
-    auto operator()(const pointer& p) const noexcept -> std::size_t {
-      return detail::hash(p.is_leaf(), p.data());
-    }
-  };
-
   template<> struct hash<node> {
     auto operator()(const node& n) const noexcept -> std::size_t {
       return detail::hash(
-        std::hash<pointer>()(n.left()),
-        std::hash<pointer>()(n.right()));
+        n.left().to_ullong(),
+        n.right().to_ullong()
+      );
     }
   };
 }

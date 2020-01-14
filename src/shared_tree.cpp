@@ -20,6 +20,13 @@ auto pointer::index() const -> std::uint64_t {
   return information;
 }
 
+auto pointer::to_ullong() const noexcept -> unsigned long long {
+  return information
+  | static_cast<unsigned long long>(mirror) << 60
+  | static_cast<unsigned long long>(transpose) << 61
+  | static_cast<unsigned long long>(leaf_node) << 62;
+}
+
 
 /******************************************************************************
  *  Genome, constructed as a balanced shared tree.
