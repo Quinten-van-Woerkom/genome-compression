@@ -18,7 +18,7 @@ namespace fs = std::filesystem;
 
 // Supported nucleic acid codes
 enum class nac : char {
-  A, C, G, T, R, Y, K, M, S, W, B, D, H, V, N, Indeterminate
+  A = 0, C, G, T, R, Y, K, M, S, W, B, D, H, V, N, Indeterminate
 };
 
 // DNA strand of predetermined size
@@ -37,6 +37,9 @@ public:
     }
     return result;
   }
+
+  auto transposed() const -> dna;
+  auto mirrored() const -> dna;
 
   auto to_ullong() const { return nucleotides.to_ullong(); }
 

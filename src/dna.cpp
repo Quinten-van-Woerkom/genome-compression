@@ -21,6 +21,82 @@ bool valid_nac(char code) {
     || code == 'H' || code == 'V' || code == 'N' || code == '-';
 }
 
+auto to_nac(char nucleotide) -> nac {
+  auto code = std::toupper(nucleotide);
+  switch (code) {
+    case 'A': return nac::A;
+    case 'C': return nac::C;
+    case 'G': return nac::G;
+    case 'T': return nac::T;
+    case 'R': return nac::R;
+    case 'Y': return nac::Y;
+    case 'K': return nac::K;
+    case 'M': return nac::M;
+    case 'S': return nac::S;
+    case 'W': return nac::W;
+    case 'B': return nac::B;
+    case 'D': return nac::D;
+    case 'H': return nac::H;
+    case 'V': return nac::V;
+    case 'N': return nac::N;
+    case '-': return nac::Indeterminate;
+    default : {
+      std::cerr << "Encountered unknown symbol: " << code << " (ASCII code " << static_cast<int>(code) << ")\n";
+      exit(1);
+    }
+  }
+}
+
+constexpr auto from_nac(nac code) -> char {
+  switch (code) {
+    case nac::A: return 'A';
+    case nac::C: return 'C';
+    case nac::G: return 'G';
+    case nac::T: return 'T';
+    case nac::R: return 'R';
+    case nac::Y: return 'Y';
+    case nac::K: return 'K';
+    case nac::M: return 'M';
+    case nac::S: return 'S';
+    case nac::W: return 'W';
+    case nac::B: return 'B';
+    case nac::D: return 'D';
+    case nac::H: return 'H';
+    case nac::V: return 'V';
+    case nac::N: return 'N';
+    case nac::Indeterminate: return '-';
+    default: {
+      std::cerr << "Trying to decipher invalid FASTA symbol\n";
+      exit(1);
+    }
+  }
+}
+
+constexpr auto transpose(nac code) -> nac {
+  switch (code) {
+    case nac::A: return nac::T;
+    case nac::T: return nac::A;
+    case nac::C: return nac::G;
+    case nac::G: return nac::C;
+    case nac::R: return nac::Y;
+    case nac::Y: return nac::R;
+    case nac::K: return nac::M;
+    case nac::M: return nac::K;
+    case nac::S: return nac::S;
+    case nac::W: return nac::W;
+    case nac::B: return nac::V;
+    case nac::V: return nac::B;
+    case nac::D: return nac::H;
+    case nac::H: return nac::D;
+    case nac::N: return nac::N;
+    case nac::Indeterminate: return nac::Indeterminate;
+    default: {
+      std::cerr << "Trying to transpose an unknown nucleic acid code\n";
+      exit(1);
+    }
+  }
+}
+
 dna::dna(const std::string_view strand) {
   assert(strand.size() == length);
   for (auto i = 0u; i < length; ++i) {
@@ -46,28 +122,7 @@ auto dna::operator[](std::size_t index) const -> char {
 auto dna::nucleotide(std::size_t index) const -> char {
   assert(index < length);
   auto nucleotide = static_cast<nac>(from_bits(nucleotides[4*index], nucleotides[4*index+1], nucleotides[4*index+2], nucleotides[4*index+3]));
-  switch (nucleotide) {
-    case nac::A: return 'A';
-    case nac::C: return 'C';
-    case nac::G: return 'G';
-    case nac::T: return 'T';
-    case nac::R: return 'R';
-    case nac::Y: return 'Y';
-    case nac::K: return 'K';
-    case nac::M: return 'M';
-    case nac::S: return 'S';
-    case nac::W: return 'W';
-    case nac::B: return 'B';
-    case nac::D: return 'D';
-    case nac::H: return 'H';
-    case nac::V: return 'V';
-    case nac::N: return 'N';
-    case nac::Indeterminate: return '-';
-    default: {
-      std::cerr << "Trying to decipher invalid FASTA symbol\n";
-      exit(1);
-    }
-  }
+  return from_nac(nucleotide);
 }
 
 /**
@@ -77,38 +132,12 @@ auto dna::nucleotide(std::size_t index) const -> char {
 void dna::set_nucleotide(std::size_t index, char nucleotide) {
   assert(index < length);
 
-  auto set_internal = [&](auto index, auto nucleotide) {
-    auto bits = to_bits(static_cast<unsigned char>(nucleotide));
-    nucleotides.set(4*index, std::get<0>(bits));
-    nucleotides.set(4*index+1, std::get<1>(bits));
-    nucleotides.set(4*index+2, std::get<2>(bits));
-    nucleotides.set(4*index+3, std::get<3>(bits));
-  };
-
-  nucleotide = std::toupper(nucleotide);
-
-  switch (nucleotide) {
-    case 'A': set_internal(index, nac::A); break;
-    case 'C': set_internal(index, nac::C); break;
-    case 'G': set_internal(index, nac::G); break;
-    case 'T': set_internal(index, nac::T); break;
-    case 'R': set_internal(index, nac::R); break;
-    case 'Y': set_internal(index, nac::Y); break;
-    case 'K': set_internal(index, nac::K); break;
-    case 'M': set_internal(index, nac::M); break;
-    case 'S': set_internal(index, nac::S); break;
-    case 'W': set_internal(index, nac::W); break;
-    case 'B': set_internal(index, nac::B); break;
-    case 'D': set_internal(index, nac::D); break;
-    case 'H': set_internal(index, nac::H); break;
-    case 'V': set_internal(index, nac::V); break;
-    case 'N': set_internal(index, nac::N); break;
-    case '-': set_internal(index, nac::Indeterminate); break;
-    default: {
-      std::cerr << "Encountered unknown symbol: " << nucleotide << " (ASCII code " << static_cast<int>(nucleotide) << ")\n";
-      exit(1);
-    }
-  }
+  auto code = to_nac(nucleotide);
+  auto bits = to_bits(static_cast<unsigned char>(code));
+  nucleotides.set(4*index, std::get<0>(bits));
+  nucleotides.set(4*index+1, std::get<1>(bits));
+  nucleotides.set(4*index+2, std::get<2>(bits));
+  nucleotides.set(4*index+3, std::get<3>(bits));
 }
 
 /**
