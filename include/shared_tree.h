@@ -139,48 +139,39 @@ public:
   auto access(pointer pointer) const -> const node&;
 
   struct iterator {
-    // iterator(const std::vector<node>& nodes, pointer root);
-    iterator(shared_tree& parent, std::size_t index = 0) : parent{parent}, index{index} {}
+    iterator(const std::vector<node>& nodes, pointer root);
 
     auto operator*() noexcept -> dna;
     auto operator++() -> iterator&;
-    auto operator!=(const iterator& other) const { return index != parent.width(); }
-    // auto operator!=(const iterator& other) const { return !stack.empty(); }
+    auto operator!=(const iterator& other) const { return !stack.empty(); }
 
-    // auto access(pointer pointer) const -> const node&;
-    // void next_leaf();
+    auto access(pointer pointer) const -> const node&;
+    void next_leaf();
 
-    // const std::vector<node>& nodes;
-    // std::vector<pointer> stack;
-    // bool mirrored = false;
-    // bool transposed = false;
-    shared_tree& parent;
-    std::size_t index;
+    const std::vector<node>& nodes;
+    std::vector<pointer> stack;
+    std::vector<bool> transposed;
+    bool mirrored = false;
   };
 
   using const_iterator = iterator;
 
-  // auto subtree(pointer parent) const {
-  //   // return iterator_pair(
-  //   //   iterator{nodes, parent},
-  //   //   iterator{nodes, nullptr}
-  //   // );
-  // }
+  auto subtree(pointer parent) const {
+    // return iterator_pair(
+    //   iterator{nodes, parent},
+    //   iterator{nodes, nullptr}
+    // );
+  }
 
-  // auto begin() { return iterator{nodes, root}; }
-  // auto end() { return iterator{nodes, nullptr}; }
-  // auto cbegin() { return const_iterator{nodes, root}; }
-  // auto cend() { return const_iterator{nodes, nullptr}; }
-  auto begin() { return iterator{*this}; }
-  auto end() { return iterator{*this, width()}; }
+  auto begin() { return iterator{nodes, root}; }
+  auto end() { return iterator{nodes, nullptr}; }
+  auto cbegin() { return const_iterator{nodes, root}; }
+  auto cend() { return const_iterator{nodes, nullptr}; }
 
   template<typename... Args>
   void emplace_node(std::vector<pointer>& layer, Args&&... args);
 
 private:
-  // template<typename... Args>
-  // void emplace_node(std::vector<pointer>& layer, Args&&... args);
-
   template<typename Iterable>
   auto reduce_once(Iterable&& layer) -> std::vector<pointer>;
 

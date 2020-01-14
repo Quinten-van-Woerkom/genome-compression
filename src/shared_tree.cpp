@@ -86,23 +86,23 @@ auto shared_tree::children(pointer parent) const -> std::size_t {
  *  Constructs an iterator over the shared tree.
  *  A nullptr argument for the root indicates an end iterator.
  */
-// shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
-//   if (root != nullptr) {
-//     stack.emplace_back(root);
-//     next_leaf();
-//   }
-// }
+shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
+  if (root != nullptr) {
+    stack.emplace_back(root);
+    transposed.emplace_back(root.is_transposed());
+    next_leaf();
+  }
+}
 
 /**
  * Returns the DNA strand stored in the current leaf.
  * Mirrors and transposes it, if necessary.
  */
 auto shared_tree::iterator::operator*() noexcept -> dna {
-  // auto result = stack.back().leaf();
-  // if (mirrored) result = result.mirrored();
-  // if (transposed) result = result.transposed();
-  // return result;
-  return parent[index];
+  auto result = stack.back().leaf();
+  if (mirrored) result = result.mirrored();
+  if (transposed.back()) result = result.transposed();
+  return result;
 }
 
 /**
@@ -111,10 +111,9 @@ auto shared_tree::iterator::operator*() noexcept -> dna {
  *  remaining stack members.
  */
 auto shared_tree::iterator::operator++() -> iterator& {
-  // transposed ^= stack.back().is_transposed();
-  // stack.pop_back();
-  // next_leaf();
-  ++index;
+  stack.pop_back();
+  transposed.pop_back();
+  next_leaf();
   return *this;
 }
 
@@ -124,37 +123,46 @@ auto shared_tree::iterator::operator++() -> iterator& {
  *  are added to the stack and we apply the same procedure to them, starting
  *  with the left child.
  */
-// void shared_tree::iterator::next_leaf() {
-//   while (!stack.empty()) {
-//     auto top = stack.back();
-//     std::cout << top << '\n';
-//     mirrored = top.is_mirrored();
-//     transposed ^= top.is_transposed();
-//     if (top.is_leaf()) return;
+void shared_tree::iterator::next_leaf() {
+  while (!stack.empty()) {
+    auto top = stack.back();
+    mirrored = top.is_mirrored();
 
-//     auto node = access(top);
-//     stack.pop_back();
+    if (top.is_leaf()) return;
 
+    auto node = access(top);
+    stack.pop_back();
+    transposed.pop_back();
 
-//     if (top.is_transposed()) stack.back() = stack.back().transposed();
-
-//     if (!mirrored) {
-//       if (auto right = node.right(); !right.empty()) stack.emplace_back(right);
-//       if (auto left = node.left(); !left.empty()) stack.emplace_back(left);
-//     } else {
-//       if (auto left = node.left(); !left.empty()) stack.emplace_back(left);
-//       if (auto right = node.right(); !right.empty()) stack.emplace_back(right);
-//     }
-//   }
-// }
+    if (!mirrored) {
+      if (auto right = node.right(); !right.empty()) {
+        stack.emplace_back(right);
+        transposed.emplace_back(right.is_transposed() ^ top.is_transposed());
+      }
+      if (auto left = node.left(); !left.empty()) {
+        stack.emplace_back(left);
+        transposed.emplace_back(left.is_transposed() ^ top.is_transposed());
+      }
+    } else {
+      if (auto left = node.left(); !left.empty()) {
+        stack.emplace_back(left);
+        transposed.emplace_back(left.is_transposed() ^ top.is_transposed());
+      }
+      if (auto right = node.right(); !right.empty()) {
+        stack.emplace_back(right);
+        transposed.emplace_back(right.is_transposed() ^ top.is_transposed());
+      }
+    }
+  }
+}
 
 /**
  *  Access function identical to the one in class shared_tree itself.
  */
-// auto shared_tree::iterator::access(pointer pointer) const -> const node& {
-//   const auto index = pointer.index();
-//   return nodes[index-1];
-// }
+auto shared_tree::iterator::access(pointer pointer) const -> const node& {
+  const auto index = pointer.index();
+  return nodes[index-1];
+}
 
 /**
  *  Since the pointers stored inside nodes are not sufficient without a
