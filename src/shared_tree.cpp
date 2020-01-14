@@ -14,7 +14,7 @@ auto pointer::leaf() const -> dna {
   return dna{information};
 }
 
-auto pointer::index() const -> std::size_t {
+auto pointer::index() const -> std::uint64_t {
   assert(!empty() && "Trying to access null pointer.");
   assert(!is_leaf() && "Trying to interpret a leaf node as a non-leaf.");
   return information;

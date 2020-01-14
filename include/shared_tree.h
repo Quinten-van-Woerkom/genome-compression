@@ -7,6 +7,7 @@
 
 #include <array>
 #include <cassert>
+#include <cstdint>
 #include <optional>
 #include <stack>
 #include <unordered_map>
@@ -44,12 +45,14 @@ public:
   auto is_leaf() const noexcept -> bool { return leaf_node; }
   auto empty() const noexcept -> bool { return !is_leaf() && information == 0; }
   auto leaf() const -> dna;
-  auto index() const -> std::size_t;
-  auto data() const -> std::size_t { return information; }
+  auto index() const -> std::uint64_t;
+  auto data() const -> std::uint64_t { return information; }
 
 private:
   bool leaf_node : 1;
-  std::size_t information : 60;
+  bool mirror : 1;
+  bool transpose : 1;
+  std::uint64_t information : 60;
 };
 
 static inline auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
