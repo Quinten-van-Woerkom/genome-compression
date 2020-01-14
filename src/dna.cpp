@@ -9,6 +9,7 @@
 #include <tuple>
 
 #include "fasta_reader.h"
+#include "shared_tree.h"
 #include "utility.h"
 
 namespace fs = std::filesystem;
@@ -134,6 +135,31 @@ auto dna::mirrored() const noexcept -> dna {
   for (auto i = 0u; i < dna::size(); ++i)
     result.set_nucleotide(i, code(dna::size() - i - 1));
   return result;
+}
+
+/**
+ * Returns the canonical node representation of this DNA sequence, as well as
+ * the transformations necessary to obtain it from the current representation.
+ * The canonical version is determined to be the one with the lowest bit
+ * representation.
+ */
+auto dna::canonical() const noexcept -> pointer {
+  auto current = pointer{*this, false, false};
+  const auto transpose = pointer{transposed(), false, true};
+  const auto mirror = pointer{mirrored(), true, false};
+  const auto both = pointer{transposed().mirrored(), true, true};
+
+  if (transpose < current) current = transpose;
+  if (mirror < current) current = mirror;
+  if (both < current) current = both;
+  return current;
+
+  // return variadic_min(
+  //   pointer{*this, false, false},
+  //   pointer{transpose, false, true},
+  //   pointer{mirror, true, false},
+  //   pointer{both, true, true}
+  // );
 }
 
 /**

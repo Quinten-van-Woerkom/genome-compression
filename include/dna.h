@@ -12,6 +12,7 @@
 #include <iostream>
 #include <random>
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -20,6 +21,9 @@ namespace fs = std::filesystem;
 enum class nac : char {
   A = 0, C, G, T, R, Y, K, M, S, W, B, D, H, V, N, Indeterminate
 };
+
+// Forward declaration of pointer class in shared_tree.h
+class pointer;
 
 // DNA strand of predetermined size
 class dna {
@@ -33,6 +37,7 @@ public:
 
   auto transposed() const noexcept -> dna;
   auto mirrored() const noexcept -> dna;
+  auto canonical() const noexcept -> pointer;
   auto to_ullong() const { return nucleotides.to_ullong(); }
 
   auto operator[](std::size_t index) const -> char;

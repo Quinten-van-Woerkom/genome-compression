@@ -22,9 +22,50 @@ auto pointer::index() const -> std::uint64_t {
 
 auto pointer::to_ullong() const noexcept -> unsigned long long {
   return information
-  | static_cast<unsigned long long>(mirror) << 60
-  | static_cast<unsigned long long>(transpose) << 61
-  | static_cast<unsigned long long>(leaf_node) << 62;
+  | static_cast<unsigned long long>(mirror_bit) << 60
+  | static_cast<unsigned long long>(transpose_bit) << 61
+  | static_cast<unsigned long long>(leaf_bit) << 62;
+}
+
+
+/******************************************************************************
+ *  Node in a binary tree.
+ */
+/**
+ * Two nodes are considered equal if they can be transformed into one another
+ * through only mirroring and/or transposition.
+ */
+bool node::operator==(const node& other) const noexcept {
+  const auto transpose = std::array{children[0].transposed(), children[1].transposed()};
+  const auto mirror = std::array{children[1].mirrored(), children[0].mirrored()};
+  const auto both = std::array{children[1].mirrored().transposed(), children[0].mirrored().transposed()};
+
+  const bool match_exact = children[0] == other.children[0] && children[1] == other.children[1];
+  const bool match_transposed = transpose[0] == other.children[0] && transpose[1] == other.children[1];
+  const bool match_mirrored = mirror[0] == other.children[0] && mirror[1] == other.children[1];
+  const bool match_both = both[0] == other.children[0] && both[1] == other.children[1];
+
+  return match_exact || match_transposed || match_mirrored || match_both;
+}
+
+/**
+ * Determines which transformations need to be applied to obtain the canonical
+ * node. Returns them in a pair, first member referring to mirroring, second to
+ * transposition.
+ * Precondition: other must be similar to *this.
+ */
+auto node::transformations(const node& other) const noexcept -> std::pair<bool, bool> {
+  const auto transpose = std::array{children[0].transposed(), children[1].transposed()};
+  const auto mirror = std::array{children[1].mirrored(), children[0].mirrored()};
+
+  const bool match_exact = children[0] == other.children[0] && children[1] == other.children[1];
+  const bool match_transposed = transpose[0] == other.children[0] && transpose[1] == other.children[1];
+  const bool match_mirrored = mirror[0] == other.children[0] && mirror[1] == other.children[1];
+
+  if (match_exact) return {false, false};
+  if (match_transposed) return {false, true};
+  if (match_mirrored) return {true, false};
+  else return {true, true};
 }
 
 
@@ -45,11 +86,23 @@ auto shared_tree::children(pointer parent) const -> std::size_t {
  *  Constructs an iterator over the shared tree.
  *  A nullptr argument for the root indicates an end iterator.
  */
-shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
-  if (root != nullptr) {
-    stack.emplace_back(root);
-    next_leaf();
-  }
+// shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
+//   if (root != nullptr) {
+//     stack.emplace_back(root);
+//     next_leaf();
+//   }
+// }
+
+/**
+ * Returns the DNA strand stored in the current leaf.
+ * Mirrors and transposes it, if necessary.
+ */
+auto shared_tree::iterator::operator*() noexcept -> dna {
+  // auto result = stack.back().leaf();
+  // if (mirrored) result = result.mirrored();
+  // if (transposed) result = result.transposed();
+  // return result;
+  return parent[index];
 }
 
 /**
@@ -58,8 +111,10 @@ shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : 
  *  remaining stack members.
  */
 auto shared_tree::iterator::operator++() -> iterator& {
-  stack.pop_back();
-  next_leaf();
+  // transposed ^= stack.back().is_transposed();
+  // stack.pop_back();
+  // next_leaf();
+  ++index;
   return *this;
 }
 
@@ -69,25 +124,37 @@ auto shared_tree::iterator::operator++() -> iterator& {
  *  are added to the stack and we apply the same procedure to them, starting
  *  with the left child.
  */
-void shared_tree::iterator::next_leaf() {
-  while (!stack.empty()) {
-    auto top = stack.back();
-    if (top.is_leaf()) return;
+// void shared_tree::iterator::next_leaf() {
+//   while (!stack.empty()) {
+//     auto top = stack.back();
+//     std::cout << top << '\n';
+//     mirrored = top.is_mirrored();
+//     transposed ^= top.is_transposed();
+//     if (top.is_leaf()) return;
 
-    auto node = access(top);
-    stack.pop_back();
-    if (auto right = node.right(); !right.empty()) stack.emplace_back(right);
-    if (auto left = node.left(); !left.empty()) stack.emplace_back(left);
-  }
-}
+//     auto node = access(top);
+//     stack.pop_back();
+
+
+//     if (top.is_transposed()) stack.back() = stack.back().transposed();
+
+//     if (!mirrored) {
+//       if (auto right = node.right(); !right.empty()) stack.emplace_back(right);
+//       if (auto left = node.left(); !left.empty()) stack.emplace_back(left);
+//     } else {
+//       if (auto left = node.left(); !left.empty()) stack.emplace_back(left);
+//       if (auto right = node.right(); !right.empty()) stack.emplace_back(right);
+//     }
+//   }
+// }
 
 /**
  *  Access function identical to the one in class shared_tree itself.
  */
-auto shared_tree::iterator::access(pointer pointer) const -> const node& {
-  const auto index = pointer.index();
-  return nodes[index-1];
-}
+// auto shared_tree::iterator::access(pointer pointer) const -> const node& {
+//   const auto index = pointer.index();
+//   return nodes[index-1];
+// }
 
 /**
  *  Since the pointers stored inside nodes are not sufficient without a
@@ -96,17 +163,39 @@ auto shared_tree::iterator::access(pointer pointer) const -> const node& {
  */
 auto shared_tree::operator[](std::size_t index) const -> dna {
   auto current = root;
+  bool mirror = false;
+  bool transpose = false;
+
   while (!current.is_leaf()) {
+    mirror = current.is_mirrored();
+    transpose ^= current.is_transposed();
     const auto& node = access(current);
-    const auto left_size = children(node.left());
-    if (index < left_size) {
-      current = node.left();
+
+    if (!mirror) {
+      const auto left_size = children(node.left());
+      if (index < left_size) {
+        current = node.left();
+      } else {
+        index -= left_size;
+        current = node.right();
+      }
     } else {
-      index -= left_size;
-      current = node.right();
+      const auto right_size = children(node.right());
+      if (index < right_size) {
+        current = node.right();
+      } else {
+        index -= right_size;
+        current = node.left();
+      }
     }
   }
-  return current.leaf();
+
+  auto leaf = current.leaf();
+  transpose ^= current.is_transposed();
+  mirror = current.is_mirrored();
+  if (transpose) leaf = leaf.transposed();
+  if (mirror) leaf = leaf.mirrored();
+  return leaf;
 }
 
 /**

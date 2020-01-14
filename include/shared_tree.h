@@ -31,31 +31,44 @@ class pointer;
  */
 class pointer {
 public:
-  pointer(std::size_t index) : information{index}, leaf_node{false} {}
-  pointer(dna dna) : information{dna.to_ullong()}, leaf_node{true} {}
-  pointer(std::nullptr_t) : information{0}, mirror{false}, transpose{false}, leaf_node{false} {}
+  pointer(std::size_t index, bool mirror, bool transpose)
+  : information{index}, mirror_bit{mirror}
+  , transpose_bit{transpose}, leaf_bit{false} {}
+
+  pointer(dna dna, bool mirror, bool transpose)
+  : information{dna.to_ullong()}, mirror_bit{mirror}
+  , transpose_bit{transpose}, leaf_bit{true} {}
+
+  pointer(std::nullptr_t) : information{0}, mirror_bit{false}, transpose_bit{false}, leaf_bit{false} {}
 
   bool operator==(const pointer& other) const noexcept { return to_ullong() == other.to_ullong(); }
   bool operator!=(const pointer& other) const noexcept { return to_ullong() != other.to_ullong(); }
+  bool operator<(const pointer& other) const noexcept { return information < other.information; }
 
-  auto is_leaf() const noexcept -> bool { return leaf_node; }
+  auto is_leaf() const noexcept -> bool { return leaf_bit; }
+  auto is_mirrored() const noexcept -> bool { return mirror_bit; }
+  auto is_transposed() const noexcept -> bool { return transpose_bit; }
+
   auto empty() const noexcept -> bool { return *this == nullptr; }
   auto data() const -> std::uint64_t { return information; }
   auto to_ullong() const noexcept -> unsigned long long;
   auto leaf() const -> dna;
   auto index() const -> std::uint64_t;
 
+  auto mirrored() const noexcept { auto result = *this; result.mirror_bit ^= true; return result; }
+  auto transposed() const noexcept { auto result = *this; result.transpose_bit ^= true; return result; }
+
 private:
   std::uint64_t information : 60;
-  bool mirror : 1;
-  bool transpose : 1;
-  bool leaf_node : 1;
+  bool mirror_bit : 1;
+  bool transpose_bit : 1;
+  bool leaf_bit : 1;
 };
 
 static inline auto operator<<(std::ostream& os, const pointer& p) -> std::ostream& {
   if (p.empty()) return os << "empty";
-  if (p.is_leaf()) return os << "leaf: " << p.leaf();
-  else return os << "node: " << p.index();
+  if (p.is_leaf()) return os << "leaf (" << p.is_mirrored() << p.is_transposed() << "): " << p.leaf();
+  else return os << "node (" << p.is_mirrored() << p.is_transposed() << "): " << p.index();
 }
 
 
@@ -67,14 +80,18 @@ class node {
 public:
   node(pointer left, pointer right) : children{left, right} {}
   node(pointer left) : children{left, nullptr} {}
+  node(dna left, dna right) : children{left.canonical(), right.canonical()} {}
+  node(dna left) : children{left.canonical(), nullptr} {}
 
   auto left() const -> const pointer& { return children[0]; }
   auto right() const -> const pointer& { return children[1]; }
   auto empty() const noexcept -> std::size_t { return children[0].empty() && children[1].empty(); }
 
-  bool operator==(const node& other) const noexcept {
-    return children[0] == other.children[0] && children[1] == other.children[1];
-  }
+  bool operator==(const node& other) const noexcept;
+  bool operator!=(const node& other) const noexcept { return !(*this == other); }
+  auto transformations(const node& other) const noexcept -> std::pair<bool, bool>;
+
+  bool verbose_compare(const node& other) const noexcept;
 
 private:
   std::array<pointer, 2> children;
@@ -86,16 +103,17 @@ static inline auto operator<<(std::ostream& os, const node& n) -> std::ostream& 
 
 
 /******************************************************************************
- *  Hash functions for the pointer and node classes, so that they can be used
- *  in hash tables.
+ *  Hash functions for the node class, so that it can be used in hash tables.
  */
 namespace std {
   template<> struct hash<node> {
     auto operator()(const node& n) const noexcept -> std::size_t {
-      return detail::hash(
-        n.left().to_ullong(),
-        n.right().to_ullong()
-      );
+      const auto left = (n.left().to_ullong() & 0xfffffffffffffff) | static_cast<unsigned long long>(n.left().is_leaf()) << 62;
+      const auto right = (n.right().to_ullong() & 0xfffffffffffffff) | static_cast<unsigned long long>(n.right().is_leaf()) << 62;
+      const auto transposed = n.left().is_transposed() ^ n.right().is_transposed();
+      const auto mirrored = n.left().is_mirrored() ^ n.left().is_mirrored();
+      if (left < right) return detail::hash(1, transposed, mirrored, left, right);
+      else return detail::hash(0, transposed, mirrored, right, left);
     }
   };
 }
@@ -118,40 +136,50 @@ public:
   auto children(pointer parent) const -> std::size_t;
 
   auto operator[](std::size_t index) const -> dna;
+  auto access(pointer pointer) const -> const node&;
 
   struct iterator {
-    iterator(const std::vector<node>& nodes, pointer root);
+    // iterator(const std::vector<node>& nodes, pointer root);
+    iterator(shared_tree& parent, std::size_t index = 0) : parent{parent}, index{index} {}
 
-    auto operator*() const { return stack.back().leaf(); }
+    auto operator*() noexcept -> dna;
     auto operator++() -> iterator&;
-    auto operator!=(const iterator& other) const { return !stack.empty(); }
+    auto operator!=(const iterator& other) const { return index != parent.width(); }
+    // auto operator!=(const iterator& other) const { return !stack.empty(); }
 
-    auto access(pointer pointer) const -> const node&;
-    void next_leaf();
+    // auto access(pointer pointer) const -> const node&;
+    // void next_leaf();
 
-    const std::vector<node>& nodes;
-    std::vector<pointer> stack;
+    // const std::vector<node>& nodes;
+    // std::vector<pointer> stack;
+    // bool mirrored = false;
+    // bool transposed = false;
+    shared_tree& parent;
+    std::size_t index;
   };
 
   using const_iterator = iterator;
 
-  auto subtree(pointer parent) const {
-    return iterator_pair(
-      iterator{nodes, parent},
-      iterator{nodes, nullptr}
-    );
-  }
+  // auto subtree(pointer parent) const {
+  //   // return iterator_pair(
+  //   //   iterator{nodes, parent},
+  //   //   iterator{nodes, nullptr}
+  //   // );
+  // }
 
-  auto begin() { return iterator{nodes, root}; }
-  auto end() { return iterator{nodes, nullptr}; }
-  auto cbegin() { return const_iterator{nodes, root}; }
-  auto cend() { return const_iterator{nodes, nullptr}; }
-
-private:
-  auto access(pointer pointer) const -> const node&;
+  // auto begin() { return iterator{nodes, root}; }
+  // auto end() { return iterator{nodes, nullptr}; }
+  // auto cbegin() { return const_iterator{nodes, root}; }
+  // auto cend() { return const_iterator{nodes, nullptr}; }
+  auto begin() { return iterator{*this}; }
+  auto end() { return iterator{*this, width()}; }
 
   template<typename... Args>
   void emplace_node(std::vector<pointer>& layer, Args&&... args);
+
+private:
+  // template<typename... Args>
+  // void emplace_node(std::vector<pointer>& layer, Args&&... args);
 
   template<typename Iterable>
   auto reduce_once(Iterable&& layer) -> std::vector<pointer>;
@@ -172,11 +200,22 @@ private:
  */
 template<typename... Args>
 void shared_tree::emplace_node(std::vector<pointer>& layer, Args&&... args) {
-  auto created_node = node{pointer{args}...};
+  auto created_node = node{args...};
   auto insertion = indices.emplace(created_node, nodes.size()+1);
-  if (insertion.second) nodes.emplace_back(created_node);
+  auto canonical_node = (*insertion.first).first;
   auto index = (*insertion.first).second;
-  layer.emplace_back(index);
+
+  auto mirrored = false;
+  auto transposed = false;
+
+  if (insertion.second) nodes.emplace_back(created_node);
+  else {
+    auto transform = created_node.transformations(canonical_node);
+    mirrored = transform.first;
+    transposed = transform.second;
+  }
+
+  layer.emplace_back(index, mirrored, transposed);
 }
 
 /**
