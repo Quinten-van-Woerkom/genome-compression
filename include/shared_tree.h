@@ -85,7 +85,6 @@ public:
 
   auto left() const -> const pointer& { return children[0]; }
   auto right() const -> const pointer& { return children[1]; }
-  auto empty() const noexcept -> std::size_t { return children[0].empty() && children[1].empty(); }
 
   bool operator==(const node& other) const noexcept;
   bool operator!=(const node& other) const noexcept { return !(*this == other); }
