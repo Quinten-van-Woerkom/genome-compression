@@ -142,6 +142,9 @@ auto dna::mirrored() const noexcept -> dna {
  * the transformations necessary to obtain it from the current representation.
  * The canonical version is determined to be the one with the lowest bit
  * representation.
+ * The booleans returned indicate the requirement of mirroring and/or
+ * transformation to transform from the current to the canonical
+ * representation.
  */
 auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool> {
   auto current = std::tuple{*this, false, false};
