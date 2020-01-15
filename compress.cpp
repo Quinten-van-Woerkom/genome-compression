@@ -14,9 +14,14 @@
 
 int main(int argc, char* argv[]) {
   std::string path = "data/chmpxx";
+  std::string histogram;
   if (argc > 1) {
-      path = argv[1];
+    path = argv[1];
   }
+  if (argc > 2) {
+    histogram = argv[2];
+  }
+
   std::cout << "Compressing " << path << "...\n";
   std::cout.flush();
 
@@ -34,6 +39,7 @@ int main(int argc, char* argv[]) {
   auto compressed_size = compressed.node_count();
   auto compressed_width = compressed.width();
   auto file_size = std::filesystem::file_size(path);
+  compressed.histogram(histogram);
 
   std::cout
     << "Number of data units: " << compressed_width << '\n'
@@ -41,6 +47,7 @@ int main(int argc, char* argv[]) {
     << "File size: " << file_size << " bytes\n"
     << "Compressed size: " << compressed_size*sizeof(node) << " bytes (" << compressed_size << " nodes)\n"
     << "Compression ratio: " << double(compressed_size*sizeof(node))/double(file_size) << '\n'
+    << "Stored node reference histogram at " << histogram << '\n'
     << "Time: " << time.count() << "ms\n";
 
   return 0;

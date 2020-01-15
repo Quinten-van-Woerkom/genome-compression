@@ -130,10 +130,10 @@ public:
   template<typename Iterable>
   static auto create_balanced(Iterable&& data) -> shared_tree;
 
-  // Number of nodes stored
   auto node_count() const -> std::size_t { return nodes.size(); }
   auto width() const -> std::size_t { return children(root); }
   auto children(pointer parent) const -> std::size_t;
+  void histogram(std::filesystem::path path) const;
 
   auto operator[](std::size_t index) const -> dna;
   auto access(pointer pointer) const -> const node&;
@@ -204,6 +204,7 @@ void shared_tree::emplace_node(std::vector<pointer>& layer, Args&&... args) {
     auto transform = created_node.transformations(canonical_node);
     mirrored = transform.first;
     transposed = transform.second;
+    // if (mirrored || transposed) std::cout << created_node << ' ' << canonical_node << '\n';
   }
 
   layer.emplace_back(index, mirrored, transposed);

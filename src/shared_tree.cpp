@@ -3,6 +3,9 @@
  *  common subtree merging.
  */
  
+#include <algorithm>
+#include <fstream>
+
  #include "shared_tree.h"
 
 /******************************************************************************
@@ -80,6 +83,25 @@ auto shared_tree::children(pointer parent) const -> std::size_t {
   if (parent.empty()) return 0;
   auto node = access(parent);
   return children(node.left()) + children(node.right());
+}
+
+/**
+ * Constructs a histogram of the number of references to each node, and stores
+ * it in .csv format at the provided location.
+ */
+void shared_tree::histogram(std::filesystem::path path) const {
+  auto frequencies = std::vector<unsigned long long>(nodes.size(), 0);
+  auto file = std::ofstream{path};
+
+  for (const auto& node : nodes) {
+    if (!node.left().is_leaf() && !node.left().empty()) ++frequencies[node.left().index()-1];
+    if (!node.right().is_leaf() && !node.right().empty()) ++frequencies[node.right().index()-1];
+  }
+
+  std::sort(frequencies.begin(), frequencies.end(), std::greater<>());
+
+  for (const auto& frequency : frequencies)
+    file << frequency << ',';
 }
 
 /**
