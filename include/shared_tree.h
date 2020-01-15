@@ -32,20 +32,18 @@ class pointer;
 class pointer {
 public:
   pointer(std::size_t index, bool mirror, bool transpose)
-  : information{index}, mirror_bit{mirror}
-  , transpose_bit{transpose}, leaf_bit{false} {}
+  : information{index}, mirror_bit{mirror},
+    transpose_bit{transpose}, leaf_bit{false} {}
 
   pointer(dna dna, bool mirror, bool transpose)
-  : information{dna.to_ullong()}, mirror_bit{mirror}
-  , transpose_bit{transpose}, leaf_bit{true} {}
+  : information{dna.to_ullong()}, mirror_bit{mirror},
+    transpose_bit{transpose}, leaf_bit{true} {}
 
   pointer(std::tuple<dna, bool, bool> arguments)
-  : information{std::get<0>(arguments).to_ullong()}
-  , mirror_bit{std::get<1>(arguments)}
-  , transpose_bit{std::get<2>(arguments)}
-  , leaf_bit{true} {}
+  : pointer{std::get<0>(arguments), std::get<1>(arguments),
+    std::get<2>(arguments)} {}
 
-  pointer(std::nullptr_t) : information{0}, mirror_bit{false}, transpose_bit{false}, leaf_bit{false} {}
+  pointer(std::nullptr_t) : pointer{0u, false, false} {}
 
   bool operator==(const pointer& other) const noexcept { return to_ullong() == other.to_ullong(); }
   bool operator!=(const pointer& other) const noexcept { return to_ullong() != other.to_ullong(); }
