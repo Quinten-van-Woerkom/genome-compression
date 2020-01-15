@@ -202,7 +202,7 @@ auto test_tree_similarity_transforms() -> int {
     ++errors;
   }
 
-  if (!errors) std::cout << "<Tree similarity> Finished without errors!\n";
+  if (!errors) std::cout << "<Tree similarity> Finished without errors\n";
   return errors;
 }
 
