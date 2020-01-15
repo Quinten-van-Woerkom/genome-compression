@@ -39,6 +39,12 @@ public:
   : information{dna.to_ullong()}, mirror_bit{mirror}
   , transpose_bit{transpose}, leaf_bit{true} {}
 
+  pointer(std::tuple<dna, bool, bool> arguments)
+  : information{std::get<0>(arguments).to_ullong()}
+  , mirror_bit{std::get<1>(arguments)}
+  , transpose_bit{std::get<2>(arguments)}
+  , leaf_bit{true} {}
+
   pointer(std::nullptr_t) : information{0}, mirror_bit{false}, transpose_bit{false}, leaf_bit{false} {}
 
   bool operator==(const pointer& other) const noexcept { return to_ullong() == other.to_ullong(); }

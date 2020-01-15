@@ -22,9 +22,6 @@ enum class nac : char {
   A = 0, C, G, T, R, Y, K, M, S, W, B, D, H, V, N, Indeterminate
 };
 
-// Forward declaration of pointer class in shared_tree.h
-class pointer;
-
 // DNA strand of predetermined size
 class dna {
   static constexpr std::size_t length = 15; // Length of a single strand
@@ -37,7 +34,7 @@ public:
 
   auto transposed() const noexcept -> dna;
   auto mirrored() const noexcept -> dna;
-  auto canonical() const noexcept -> pointer;
+  auto canonical() const noexcept -> std::tuple<dna, bool, bool>;
   auto to_ullong() const { return nucleotides.to_ullong(); }
 
   auto operator[](std::size_t index) const -> char;
@@ -46,6 +43,7 @@ public:
   
   auto operator==(const dna& other) const noexcept -> bool { return nucleotides == other.nucleotides; }
   auto operator!=(const dna& other) const noexcept -> bool { return nucleotides != other.nucleotides; }
+  auto operator<(const dna& other) const noexcept -> bool { return nucleotides.to_ullong() < other.nucleotides.to_ullong(); }
 
 private:
   void set_nucleotide(std::size_t index, char nucleotide);

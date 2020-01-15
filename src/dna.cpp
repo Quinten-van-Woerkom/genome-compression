@@ -143,23 +143,16 @@ auto dna::mirrored() const noexcept -> dna {
  * The canonical version is determined to be the one with the lowest bit
  * representation.
  */
-auto dna::canonical() const noexcept -> pointer {
-  auto current = pointer{*this, false, false};
-  const auto transpose = pointer{transposed(), false, true};
-  const auto mirror = pointer{mirrored(), true, false};
-  const auto both = pointer{transposed().mirrored(), true, true};
+auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool> {
+  auto current = std::tuple{*this, false, false};
+  const auto transpose = std::tuple{transposed(), false, true};
+  const auto mirror = std::tuple{mirrored(), true, false};
+  const auto both = std::tuple{transposed().mirrored(), true, true};
 
   if (transpose < current) current = transpose;
   if (mirror < current) current = mirror;
   if (both < current) current = both;
   return current;
-
-  // return variadic_min(
-  //   pointer{*this, false, false},
-  //   pointer{transpose, false, true},
-  //   pointer{mirror, true, false},
-  //   pointer{both, true, true}
-  // );
 }
 
 /**
