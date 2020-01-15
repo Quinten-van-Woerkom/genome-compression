@@ -43,10 +43,10 @@ bool node::operator==(const node& other) const noexcept {
   const auto mirror = std::array{children[1].mirrored(), children[0].mirrored()};
   const auto both = std::array{children[1].mirrored().transposed(), children[0].mirrored().transposed()};
 
-  const bool match_exact = children[0] == other.children[0] && children[1] == other.children[1];
-  const bool match_transposed = transpose[0] == other.children[0] && transpose[1] == other.children[1];
-  const bool match_mirrored = mirror[0] == other.children[0] && mirror[1] == other.children[1];
-  const bool match_both = both[0] == other.children[0] && both[1] == other.children[1];
+  const bool match_exact = children == other.children;
+  const bool match_transposed = transpose == other.children;
+  const bool match_mirrored = mirror == other.children;
+  const bool match_both = both == other.children;
 
   return match_exact || match_transposed || match_mirrored || match_both;
 }
@@ -61,13 +61,9 @@ auto node::transformations(const node& other) const noexcept -> std::pair<bool, 
   const auto transpose = std::array{children[0].transposed(), children[1].transposed()};
   const auto mirror = std::array{children[1].mirrored(), children[0].mirrored()};
 
-  const bool match_exact = children[0] == other.children[0] && children[1] == other.children[1];
-  const bool match_transposed = transpose[0] == other.children[0] && transpose[1] == other.children[1];
-  const bool match_mirrored = mirror[0] == other.children[0] && mirror[1] == other.children[1];
-
-  if (match_exact) return {false, false};
-  if (match_transposed) return {false, true};
-  if (match_mirrored) return {true, false};
+  if (children == other.children) return {false, false};
+  if (transpose == other.children) return {false, true};
+  if (mirror == other.children) return {true, false};
   else return {true, true};
 }
 
