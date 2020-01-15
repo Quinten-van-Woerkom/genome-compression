@@ -9,7 +9,7 @@ LDLIBS=
 MAIN=compress.cpp
 TEST=tests/test.cpp
 JUMP=local_alignment.cpp
-SRCS=src/dna.cpp src/fasta_reader.cpp src/shared_tree.cpp
+SRCS=src/dna.cpp src/fasta_reader.cpp src/shared_tree.cpp src/balanced_shared_tree.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
 release: ADDED_CPPFLAGS=-O3
