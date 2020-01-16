@@ -18,6 +18,8 @@
 
 class fasta_reader {
 public:
+  using value_type = dna;
+
   fasta_reader(std::filesystem::path path, std::size_t buffer_size = (1<<20));
   fasta_reader(const fasta_reader&) = delete;
   fasta_reader(fasta_reader&&) = default;
