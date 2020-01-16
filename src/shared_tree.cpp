@@ -105,7 +105,7 @@ void shared_tree::histogram(std::filesystem::path path) const {
  *  A nullptr argument for the root indicates an end iterator.
  */
 shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
-  if (root) {
+  if (root != nullptr) {
     stack.emplace_back(root);
     next_leaf();
   }
