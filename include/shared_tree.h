@@ -144,7 +144,7 @@ public:
   struct iterator {
     iterator(const std::vector<node>& nodes, pointer root);
 
-    auto operator*() noexcept const -> dna;
+    auto operator*() const noexcept -> dna;
     auto operator++() -> iterator&;
     auto operator!=(const iterator& other) const { return !stack.empty(); }
 
