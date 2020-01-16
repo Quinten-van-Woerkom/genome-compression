@@ -105,7 +105,7 @@ void shared_tree::histogram(std::filesystem::path path) const {
  *  A nullptr argument for the root indicates an end iterator.
  */
 shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
-  if (root != nullptr) {
+  if (root) {
     stack.emplace_back(root);
     next_leaf();
   }
@@ -115,7 +115,7 @@ shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : 
  * Returns the DNA strand stored in the current leaf.
  * Mirrors and transposes it, if necessary.
  */
-auto shared_tree::iterator::operator*() noexcept -> dna {
+auto shared_tree::iterator::operator*() const noexcept -> dna {
   auto top = stack.back();
   auto result = top.leaf();
   if (top.is_mirrored()) result = result.mirrored();
