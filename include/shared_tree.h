@@ -153,8 +153,6 @@ public:
 
     const std::vector<node>& nodes;
     std::vector<pointer> stack;
-    std::vector<bool> transposed;
-    bool mirrored = false;
   };
 
   using const_iterator = iterator;

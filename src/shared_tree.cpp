@@ -107,7 +107,6 @@ void shared_tree::histogram(std::filesystem::path path) const {
 shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : nodes{nodes} {
   if (root != nullptr) {
     stack.emplace_back(root);
-    transposed.emplace_back(root.is_transposed());
     next_leaf();
   }
 }
@@ -117,9 +116,10 @@ shared_tree::iterator::iterator(const std::vector<node>& nodes, pointer root) : 
  * Mirrors and transposes it, if necessary.
  */
 auto shared_tree::iterator::operator*() noexcept -> dna {
-  auto result = stack.back().leaf();
-  if (mirrored) result = result.mirrored();
-  if (transposed.back()) result = result.transposed();
+  auto top = stack.back();
+  auto result = top.leaf();
+  if (top.is_mirrored()) result = result.mirrored();
+  if (top.is_transposed()) result = result.transposed();
   return result;
 }
 
@@ -130,7 +130,6 @@ auto shared_tree::iterator::operator*() noexcept -> dna {
  */
 auto shared_tree::iterator::operator++() -> iterator& {
   stack.pop_back();
-  transposed.pop_back();
   next_leaf();
   return *this;
 }
@@ -144,32 +143,24 @@ auto shared_tree::iterator::operator++() -> iterator& {
 void shared_tree::iterator::next_leaf() {
   while (!stack.empty()) {
     auto top = stack.back();
-    mirrored = top.is_mirrored();
-
     if (top.is_leaf()) return;
 
     auto node = access(top);
     stack.pop_back();
-    transposed.pop_back();
 
-    if (!mirrored) {
-      if (auto right = node.right(); !right.empty()) {
-        stack.emplace_back(right);
-        transposed.emplace_back(right.is_transposed() ^ top.is_transposed());
-      }
-      if (auto left = node.left(); !left.empty()) {
-        stack.emplace_back(left);
-        transposed.emplace_back(left.is_transposed() ^ top.is_transposed());
-      }
+    auto stack_push = [&](auto pointer) {
+        auto mirror = pointer.is_mirrored() ^ top.is_mirrored();
+        auto transpose = pointer.is_transposed() ^ top.is_transposed();
+        if (pointer.is_leaf()) stack.emplace_back(pointer.leaf(), mirror, transpose);
+        else stack.emplace_back(pointer.index(), mirror, transpose);
+    };
+
+    if (!top.is_mirrored()) {
+      if (auto right = node.right(); !right.empty()) stack_push(right);
+      if (auto left = node.left(); !left.empty()) stack_push(left);
     } else {
-      if (auto left = node.left(); !left.empty()) {
-        stack.emplace_back(left);
-        transposed.emplace_back(left.is_transposed() ^ top.is_transposed());
-      }
-      if (auto right = node.right(); !right.empty()) {
-        stack.emplace_back(right);
-        transposed.emplace_back(right.is_transposed() ^ top.is_transposed());
-      }
+      if (auto left = node.left(); !left.empty()) stack_push(left);
+      if (auto right = node.right(); !right.empty()) stack_push(right);
     }
   }
 }
