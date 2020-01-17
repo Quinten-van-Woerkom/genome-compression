@@ -11,11 +11,13 @@
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
+#include <utility>
 #include <vector>
 
 #include "robin_hood.h"
 
 #include "dna.h"
+#include "fasta_reader.h"
 #include "utility.h"
 
 namespace detail {
@@ -31,12 +33,19 @@ public:
   pointer(std::uint64_t index, bool mirror, bool transpose)
   : data{index}, mirror{mirror}, transpose{transpose} {
     // Ensures that a transformed nullptr is also null
-    const auto is_null = data == (1ull<<63)-1;
+    const auto is_null = data == (1ull<<61)-1;
     mirror |= is_null;
     transpose |= is_null;
   }
 
-  pointer(std::nullptr_t = nullptr) : pointer{(1ull<<63)-1, true, true} {}
+  pointer(dna leaf) {
+    auto [canonical, mirror_bit, transpose_bit] = leaf.canonical();
+    data = canonical.to_ullong();
+    mirror = mirror_bit;
+    transpose = transpose_bit;
+  }
+
+  pointer(std::nullptr_t = nullptr) : pointer{(1ull<<61)-1, true, true} {}
 
   bool operator==(const pointer& other) const noexcept { return to_ullong() == other.to_ullong(); }
   bool operator!=(const pointer& other) const noexcept { return to_ullong() != other.to_ullong(); }
@@ -44,6 +53,14 @@ public:
 
   bool empty() const noexcept { return *this == nullptr; }
   auto index() const noexcept { assert(!empty()); return data; }
+  auto raw() const noexcept { return data; }
+  auto leaf() const noexcept {
+    assert(!empty());
+    auto result = dna{data};
+    if (mirror) result = result.mirrored();
+    if (transpose) result = result.transposed();
+    return result;
+  }
 
   bool is_mirrored() const noexcept { return mirror; }
   bool is_transposed() const noexcept { return transpose; }
@@ -58,11 +75,11 @@ public:
    * pointer.
    */
   auto to_ullong() const noexcept -> unsigned long long {
-    return data | ((std::uint64_t)mirror << 62) | ((std::uint64_t)transpose << 63);
+    return data | ((std::uint64_t)mirror << 60) | ((std::uint64_t)transpose << 61);
   }
 
 private:
-  std::uint64_t data : 62;
+  std::uint64_t data : 60;
   bool mirror : 1;
   bool transpose : 1;
 };
@@ -79,7 +96,7 @@ public:
   auto left() const noexcept { return children[0]; }
   auto right() const noexcept { return children[1]; }
 
-  auto mirrored() const noexcept { return node{children[0].mirrored(), children[1].mirrored()}; }
+  auto mirrored() const noexcept { return node{children[1].mirrored(), children[0].mirrored()}; }
   auto transposed() const noexcept { return node{children[0].transposed(), children[1].transposed()}; }
   auto inverted() const noexcept { return mirrored().transposed(); }
 
@@ -113,10 +130,11 @@ inline auto& operator<<(std::ostream& os, const detail::node& node) {
 namespace std {
   template<> struct hash<detail::node> {
     auto operator()(const detail::node& n) const noexcept -> std::size_t {
-      const auto left = n.left().index();
-      const auto right = n.left().index();
+      const auto left = (n.left().raw() & 0xfffffffffffffff) | (1ull << 62);
+      const auto right = (n.right().raw() & 0xfffffffffffffff) | (1ull << 62);
       const auto transposed = n.left().is_transposed() ^ n.right().is_transposed();
-      const auto mirrored = n.left().is_mirrored() ^ n.left().is_mirrored();
+      const auto mirrored = n.left().is_mirrored() ^ n.right().is_mirrored();
+      // std::cout << left << ' ' << right << ' ' << transposed << ' ' << mirrored << '\n';
       if (left < right) return detail::hash(1, transposed, mirrored, left, right);
       else return detail::hash(0, transposed, mirrored, right, left);
     }
@@ -133,17 +151,20 @@ public:
   using pointer = detail::pointer;
   using node = detail::node;
 
-  balanced_shared_tree(std::filesystem::path path);
+  balanced_shared_tree(std::filesystem::path path)
+  : balanced_shared_tree{fasta_reader{path}} {};
+
+  balanced_shared_tree(fasta_reader file);
+  balanced_shared_tree(std::vector<dna>& data);
 
   auto depth() const { return nodes.size(); }
-  auto width() const { return children(nodes.size()-1, root); }
+  auto width() const { assert(nodes.back().size() == 1); return children(nodes.size()-1, root); }
 
   auto children(std::size_t layer, pointer pointer) const -> std::size_t;
   auto node_count() const -> std::size_t;
   auto node_count(std::size_t layer) const { return nodes[layer].size(); }
-  auto leaf_count() const { return leaves.size(); }
 
-  auto access_leaf(pointer pointer) const -> dna;
+  auto access_leaf(std::size_t index, pointer pointer) const -> dna;
   auto access_node(std::size_t layer, pointer pointer) const -> node;
   auto operator[](std::uint64_t index) const -> dna;
 
@@ -151,7 +172,8 @@ public:
   void emplace_node(std::size_t layer, node node);
   void emplace_leaf(dna leaf);
 
-  void histogram(std::filesystem::path) {};
+  void histogram(std::filesystem::path) const;
+  void print_unique(std::ostream& os) const;
 
   struct iterator {
     using pointer = balanced_shared_tree::pointer;
@@ -183,7 +205,6 @@ public:
 
 private:
   std::vector<std::vector<node>> nodes;
-  std::vector<dna> leaves;
   pointer root;
 };
 
@@ -197,42 +218,75 @@ class tree_constructor {
 public:
   using pointer = balanced_shared_tree::pointer;
   using node = balanced_shared_tree::node;
-  
-  // template<typename T>
-  // using hash_map = robin_hood::unordered_flat_map<T, std::uint64_t>;
-  template<typename T>
-  using hash_map = robin_hood::unordered_node_map<T, std::uint64_t>;
+  using hash_map = robin_hood::unordered_flat_map<node, std::uint64_t>;
+  // using hash_map = std::unordered_map<node, std::uint64_t>;
 
   tree_constructor(balanced_shared_tree& parent);
 
-  auto root() const -> pointer { return roots.front(); }
-
-  void emplace_node(pointer left, pointer right = nullptr);
-  void emplace_leaf(const dna& leaf);
-  void reduce_once();
+  void emplace(std::vector<pointer>& layer, std::size_t layer_index, pointer left, pointer right = nullptr);
 
   template<typename Iterable>
-  void reduce(Iterable&& segment);
-  void reduce();
+  auto reduce_layer(Iterable&& layer, std::size_t index) -> std::vector<pointer>;
+
+  template<typename Iterable>
+  auto reduce_segment(Iterable&& segment, std::size_t index = 0) -> pointer;
+
+  template<typename Iterable>
+  auto reduce(Iterable&& data) -> pointer;
 
 private:
   balanced_shared_tree& parent;
-  std::vector<hash_map<node>> nodes;
-  hash_map<dna> leaves;
-  std::vector<pointer> current_layer;
-  std::vector<pointer> next_layer;
+  std::vector<hash_map> nodes;
   std::vector<pointer> roots;
-  std::size_t layer = 0;
 };
+
+/**
+ * Reduces the current layer by constructing nodes out of the pointers it
+ * contains, and emplacing those nodes in the correct layers and maps, if
+ * necessary.
+ */
+template<typename Iterable>
+auto tree_constructor::reduce_layer(Iterable&& iterable, std::size_t index) -> std::vector<pointer> {
+  auto layer = std::vector<pointer>{};
+  layer.reserve(iterable.size()/2 + iterable.size()%2);
+  if (parent.depth() <= index) {
+    parent.add_layer();
+    nodes.emplace_back();
+  }
+
+  foreach_pair(iterable,
+    [&](const auto& left, const auto& right) { emplace(layer, index, left, right); },
+    [&](const auto& last) { emplace(layer, index, last); }
+  );
+
+  return layer;
+}
 
 /**
  * Reduces the layer, saving any encountered nodes and leaves in the shared
  * tree according to canonical representation.
  */
 template<typename Iterable>
-void tree_constructor::reduce(Iterable&& segment) {
-  layer = 0;
-  for (auto leaf : segment) emplace_leaf(leaf);
-  while (current_layer.size() > 1) reduce_once();
-  roots.emplace_back(current_layer.front());
+auto tree_constructor::reduce_segment(Iterable&& segment, std::size_t index) -> pointer {
+  auto layer = reduce_layer(segment, index++);
+  for (; layer.size() > 1; ++index)
+    layer = reduce_layer(layer, index);
+  return layer.front();
+}
+
+/**
+ * Reduces the data by dividing it into segments, each of which is fully
+ * reduced. The resulting tree roots are then also reduced to obtain the
+ * final tree representation.
+ */
+template<typename Iterable>
+auto tree_constructor::reduce(Iterable&& data) -> pointer {
+  constexpr auto segment_size = (1u<<10);
+  auto segment_roots = std::vector<pointer>{};
+
+  for (auto segment : chunks(data, segment_size)) {
+    auto segment_root = reduce_segment(segment);
+    segment_roots.emplace_back(segment_root);
+  }
+  return reduce_segment(segment_roots, nodes.size());
 }

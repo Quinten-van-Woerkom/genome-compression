@@ -35,7 +35,7 @@ public:
   auto transposed() const noexcept -> dna;
   auto mirrored() const noexcept -> dna;
   auto canonical() const noexcept -> std::tuple<dna, bool, bool>;
-  auto to_ullong() const { return nucleotides.to_ullong(); }
+  auto to_ullong() const noexcept { return nucleotides.to_ullong(); }
 
   auto operator[](std::size_t index) const -> char;
   auto code(std::size_t index) const -> nac;
@@ -44,6 +44,7 @@ public:
   auto operator==(const dna& other) const noexcept -> bool { return nucleotides == other.nucleotides; }
   auto operator!=(const dna& other) const noexcept -> bool { return nucleotides != other.nucleotides; }
   auto operator<(const dna& other) const noexcept -> bool { return nucleotides.to_ullong() < other.nucleotides.to_ullong(); }
+  operator std::uint64_t() const noexcept { return nucleotides.to_ullong(); }
 
 private:
   void set_nucleotide(std::size_t index, char nucleotide);

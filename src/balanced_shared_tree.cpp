@@ -48,16 +48,14 @@ auto detail::node::transformations(const node& other) const noexcept -> std::pai
 /**
  * Constructs a balanced_shared_tree from a FASTA formatted file.
  */
-balanced_shared_tree::balanced_shared_tree(std::filesystem::path path) {
-  constexpr auto segment_size = (1u<<29);
-  auto data = fasta_reader{path};
+balanced_shared_tree::balanced_shared_tree(fasta_reader file) {
   auto constructor = tree_constructor{*this};
-  auto subroots = std::vector<pointer>{};
+  root = constructor.reduce(file);
+}
 
-  for (auto segment : chunks(data, segment_size))
-    constructor.reduce(segment);
-  constructor.reduce();
-  root = constructor.root();
+balanced_shared_tree::balanced_shared_tree(std::vector<dna>& data) {
+  auto constructor = tree_constructor{*this};
+  root = constructor.reduce(data);
 }
 
 /**
@@ -71,40 +69,13 @@ auto balanced_shared_tree::node_count() const -> std::size_t {
 }
 
 /**
- * Accesses the leaf pointed to by <pointer>.
- * Applies the correct transforms to the canonical leaf to obtain the result.
+ * Accesses the first or second leaf located in the node pointed to by
+ * <pointer>, depending on <index>.
  */
-auto balanced_shared_tree::access_leaf(pointer pointer) const -> dna {
-  auto result = leaves[pointer.index()];
-  if (pointer.is_mirrored()) result = result.mirrored();
-  if (pointer.is_transposed()) result = result.transposed();
-  return result;
-}
-
-/**
- * Accesses the node in layer <layer> pointed to by <pointer>.
- * Returned by value since since the nodes must be immutable anyway.
- */
-auto balanced_shared_tree::access_node(std::size_t layer, pointer pointer) const -> node {
-  return nodes[layer][pointer.index()];
-}
-
-/**
- * Returns the number of children contained in the subtree referenced by
- * <pointer> in <layer>.
- */
-auto balanced_shared_tree::children(std::size_t layer, pointer pointer) const -> std::size_t {
-  if (pointer == nullptr) return 0;
-  const auto node = access_node(layer, pointer);
-  const auto left = node.left();
-  const auto right = node.right();
-  if (layer == 0) return !left.empty() + !right.empty();
-  else return children(layer-1, left) + children(layer-1, right);
-}
-
-auto balanced_shared_tree::operator[](std::uint64_t index) const -> dna {
-  auto current = root;
-  auto layer = nodes.size() - 1;
+auto balanced_shared_tree::access_leaf(std::size_t index, pointer current) const -> dna {
+  auto parent_node = access_node(0, current);
+  const auto left = parent_node.left();
+  const auto right = parent_node.right();
 
   auto combine = [](auto next, auto current) {
     const auto mirror = next.is_mirrored() != current.is_mirrored();
@@ -112,36 +83,70 @@ auto balanced_shared_tree::operator[](std::uint64_t index) const -> dna {
     return pointer{next.index(), mirror, transpose};
   };
 
-  auto descend = [&](auto left, auto right) {
-    const auto size = children(--layer, left);
-    if (index < size) return combine(left, current);
-    index -= size;
-    return combine(right, current);
-  };
-
-  while (layer > 0) {
-    const auto& node = access_node(layer, current);
-    const auto left = node.left();
-    const auto right = node.right();
-
-    if (current.is_mirrored()) current = descend(right, left);
-    else current = descend(left, right);
-  }
-
-  const auto& node = access_node(0, current);
-  const auto left = node.left();
-  const auto right = node.right();
-
   auto descend_leaf = [&](auto left, auto right) {
     const auto size = (bool)left;
     if (index < size) return combine(left, current);
     index -= size;
     return combine(right, current);
   };
-
+  
   if (current.is_mirrored()) current = descend_leaf(right, left);
   else current = descend_leaf(left, right);
-  return access_leaf(current);
+  return current.leaf();
+}
+
+/**
+ * Accesses the node in layer <layer> pointed to by <pointer>.
+ * Returned by value since since the nodes must be immutable anyway.
+ */
+auto balanced_shared_tree::access_node(std::size_t layer, pointer pointer) const -> node {
+  assert(layer < nodes.size());
+  if (pointer.index() >= nodes[layer].size())
+    std::cerr << "Pointer index out of bounds: " << pointer.index() << " for a size of " << nodes[layer].size() << " in layer " << layer << '\n';
+  return nodes[layer][pointer.index()];
+}
+
+/**
+ * Returns the number of children contained in the subtree referenced by
+ * <pointer> in <layer>. To determine this, we just traverse the tree without
+ * considering mirroring or transposition, as those do not alter the number of
+ * children a node has.
+ */
+auto balanced_shared_tree::children(std::size_t layer, pointer pointer) const -> std::size_t {
+  if (pointer.empty()) return 0;
+  const auto node = access_node(layer, pointer);
+  const auto left = node.left();
+  const auto right = node.right();
+  if (layer == 0) return !left.empty() + !right.empty();
+  else return children(layer-1, left) + children(layer-1, right); 
+}
+
+auto balanced_shared_tree::operator[](std::uint64_t index) const -> dna {
+  auto current = root;
+
+  auto combine = [](auto next, auto current) {
+    const auto mirror = next.is_mirrored() != current.is_mirrored();
+    const auto transpose = next.is_transposed() != current.is_transposed();
+    return pointer{next.index(), mirror, transpose};
+  };
+
+  auto descend = [&](auto layer, auto left, auto right) {
+    const auto size = children(layer, left);
+    if (index < size) return combine(left, current);
+    index -= size;
+    return combine(right, current);
+  };
+
+  for (auto layer = nodes.size()-1; layer > 0; --layer) {
+    const auto& node = access_node(layer, current);
+    const auto left = node.left();
+    const auto right = node.right();
+
+    if (current.is_mirrored()) current = descend(layer-1, right, left);
+    else current = descend(layer-1, left, right);
+  }
+
+  return access_leaf(index, current);
 }
 
 /**
@@ -153,11 +158,53 @@ void balanced_shared_tree::emplace_node(std::size_t layer, node node) {
 }
 
 /**
- * Adds a leaf to the leaf layer.
- * Precondition: the leaf is in its canonical shape and not yet present.
+ * Creates and stores a histogram for each layer in the tree, storing them as
+ * lines in a .csv file.
  */
-void balanced_shared_tree::emplace_leaf(dna leaf) {
-  leaves.emplace_back(leaf);
+void balanced_shared_tree::histogram(std::filesystem::path path) const {
+  auto file = std::ofstream{path};
+  for (auto layer = 1u; layer < nodes.size(); ++layer) {
+    auto frequencies = std::vector<unsigned long long>(nodes[layer-1].size(), 0);
+
+    // TODO: this is bugged, fix it
+    for (const auto& node : nodes[layer]) {
+      // if (!node.left().empty() && node.left().index() < frequencies.size())
+      if (!node.left().empty())
+        ++frequencies[node.left().index()];
+      // if (!node.right().empty() && node.right().index() < frequencies.size())
+      if (!node.right().empty())
+        ++frequencies[node.right().index()];
+    }
+
+    std::sort(frequencies.begin(), frequencies.end(), std::greater<>());
+
+    for (const auto& frequency : frequencies)
+      file << frequency << ',';
+    file << '\n';
+  }
+}
+
+/**
+ * Prints all layers to the output stream, in order from the root to the
+ * leaves.
+ */
+void balanced_shared_tree::print_unique(std::ostream& os) const {
+  os << "Root (" << nodes.back().size() << "): ";
+  for (auto node : nodes.back()) os << node << ", ";
+  os << '\n';
+
+  for (int i = nodes.size()-2; i > 0; --i) {
+    os << "Layer " << i << " (" << nodes[i].size() << "): ";
+    for (auto node : nodes[i]) {
+      if (node.left() >= nodes[i-1].size() || node.right() >= nodes[i-1].size())
+        os << node << ", ";
+    }
+    os << '\n';
+  }
+
+  // os << "Leaves (" << nodes.front().size() << "): ";
+  // for (auto node : nodes.front()) os << node.left().leaf() << ' ' << node.right().leaf() << ", ";
+  // os << '\n';
 }
 
 
@@ -179,7 +226,7 @@ balanced_shared_tree::iterator::iterator(balanced_shared_tree& parent, std::size
  */
 auto balanced_shared_tree::iterator::operator*() const noexcept -> dna {
   auto top = stack.back().current;
-  return parent.access_leaf(top);
+  return top.leaf();
 }
 
 /**
@@ -240,67 +287,20 @@ tree_constructor::tree_constructor(balanced_shared_tree& parent)
  * Constructs and emplaces a node inside the tree during its construction.
  * A pointer to the node is stored in <next_layer>.
  */
-void tree_constructor::emplace_node(pointer left, pointer right) {
+void tree_constructor::emplace(
+  std::vector<pointer>& layer, std::size_t layer_index,
+  pointer left, pointer right)
+{
   auto created_node = node{left, right};
-  auto insertion = nodes[layer].emplace(created_node, parent.node_count(layer));
+  auto insertion = nodes[layer_index].emplace(created_node, parent.node_count(layer_index));
   auto canonical_node = (*insertion.first).first;
   auto index = (*insertion.first).second;
 
   if (insertion.second) {
-    parent.emplace_node(layer, created_node);
-    next_layer.emplace_back(index, false, false);
+    parent.emplace_node(layer_index, created_node);
+    layer.emplace_back(index, false, false);
   } else {
     auto transform = created_node.transformations(canonical_node);
-    next_layer.emplace_back(index, transform.first, transform.second);
+    layer.emplace_back(index, transform.first, transform.second);
   }
-}
-
-/**
- * Constructs and emplaces a leaf inside the tree during its construction.
- * A pointer to the leaf is stored in <current_layer>, in preparation for
- * further reduction.
- */
-void tree_constructor::emplace_leaf(const dna& leaf) {
-  auto [canonical_leaf, mirror, transpose] = leaf.canonical();
-  auto insertion = leaves.emplace(canonical_leaf, parent.leaf_count());
-  auto index = (*insertion.first).second;
-
-  if (insertion.second) parent.emplace_leaf(canonical_leaf);
-  current_layer.emplace_back(index, mirror, transpose);
-}
-
-/**
- * Reduces the current layer by constructing nodes out of the pointers it
- * contains, and emplacing those nodes in the correct layers and maps, if
- * necessary.
- */
-void tree_constructor::reduce_once() {
-  next_layer.reserve(current_layer.size()/2 + current_layer.size()%2);
-  if (parent.depth() <= layer) {
-    parent.add_layer();
-    nodes.emplace_back();
-  }
-
-  foreach_pair(current_layer,
-    [&](const auto& left, const auto& right) { emplace_node(left, right); },
-    [&](const auto& last) { emplace_node(last); }
-  );
-
-  current_layer = std::move(next_layer);
-  next_layer.clear();
-  ++layer;
-}
-
-
-/**
- * Combines the constructed subtrees into a single tree by further reduction.
- * Precondition: <layer> is valued at the correct index for the subroots.
- */
-void tree_constructor::reduce() {
-  current_layer = roots;
-  roots.clear();
-  while (current_layer.size() > 1) {
-    reduce_once();
-  } 
-  roots.emplace_back(current_layer.front());
 }

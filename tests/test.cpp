@@ -8,6 +8,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "balanced_shared_tree.h"
 #include "dna.h"
 #include "fasta_reader.h"
 #include "shared_tree.h"
@@ -16,7 +17,7 @@
 auto test_pointer() -> int {
   auto errors = 0;
   auto leaf = dna{"ACGTACGTACGTACG"};
-  auto basis = pointer{leaf, false, false};
+  auto basis = detail::pointer{leaf, false, false};
   auto transposed = basis.transposed();
   auto mirrored = basis.mirrored();
 
@@ -126,7 +127,8 @@ auto test_file_reader() -> int {
 auto test_tree_factory() -> int {
   auto path = "data/chmpxx";
   auto data = read_genome(path);
-  auto compressed = shared_tree::create_balanced(data);
+  // auto compressed = shared_tree::create_balanced(data);
+  auto compressed = balanced_shared_tree{path};
   auto errors = 0;
 
   if (data.size() != compressed.width()) {
@@ -152,18 +154,25 @@ auto test_tree_factory() -> int {
 
 auto test_tree_similarity_transforms() -> int {
   auto errors = 0;
-  auto data = dna{"AAAAAAAAAGAAAAC"};
-  auto other = dna{"AAAAAAAAAAAAAAA"};
+  auto data = dna{"CCTCTGCCTCTGCCT"};
+  auto other = dna{"CTGCCTCTGCCTCTG"};
   auto basis = data;
   auto transposed = data.transposed();
   auto mirrored = data.mirrored();
   auto both = data.transposed().mirrored();
-  auto layer = std::vector<pointer>{};
+  auto con_layer = std::vector<dna>{};
+  auto layer = std::vector<detail::pointer>{};
 
-  auto tree = shared_tree{};
-  tree.emplace_node(layer, basis, transposed);
-  tree.emplace_node(layer, both, mirrored);
-  tree.emplace_node(layer, layer[0], layer[1]);
+  con_layer.emplace_back(basis);
+  con_layer.emplace_back(transposed);
+  con_layer.emplace_back(both);
+  con_layer.emplace_back(mirrored);
+  auto tree = balanced_shared_tree{con_layer};
+
+  if (node{basis, transposed} != node{both, mirrored}
+  || std::hash<node>()(node{basis, transposed}) != std::hash<node>()(node{both, mirrored})) {
+    std::cerr << "<Tree similarity> Mirrored nodes should compare to be equal\n";
+  }
 
   auto basis_node = node{basis.canonical(), basis.canonical()};
   auto mirrored_node = node{mirrored.canonical(), mirrored.canonical()};
@@ -172,19 +181,19 @@ auto test_tree_similarity_transforms() -> int {
   auto mirrored_mix_node = node{both.canonical(), mirrored.canonical()};
 
   if (basis_node != mirrored_node
-    && std::hash<node>()(basis_node) == std::hash<node>()(mirrored_node)) {
+    || std::hash<node>()(basis_node) != std::hash<node>()(mirrored_node)) {
     std::cerr << "<Tree similarity> Mirrored nodes should compare to be equal\n";
     ++errors;
   }
 
   if (basis_node != transposed_node
-    && std::hash<node>()(basis_node) == std::hash<node>()(transposed_node)) {
+    || std::hash<node>()(basis_node) != std::hash<node>()(transposed_node)) {
     std::cerr << "<Tree similarity> Transposed nodes should compare to be equal\n";
     ++errors;
   }
 
   if (mix_node != mirrored_mix_node
-    && std::hash<node>()(mix_node) == std::hash<node>()(mirrored_mix_node)) {
+    || std::hash<node>()(mix_node) != std::hash<node>()(mirrored_mix_node)) {
     std::cerr << "<Tree similarity> Transposed and mirrored nodes should compare to be equal\n";
     ++errors;
   }
@@ -196,9 +205,9 @@ auto test_tree_similarity_transforms() -> int {
     ++errors;
   }
 
-  if (tree.node_count() != 2) {
+  if (tree.node_count() != 3) {
     std::cerr << "<Tree similarity> Similar nodes do not merge: node count is "
-      << tree.node_count() << ", exceeding the expected 2\n";
+      << tree.node_count() << ", not matching the expected 3\n";
     ++errors;
   }
 
@@ -213,10 +222,10 @@ auto test_tree_transposition() -> int {
   data.emplace_back("AAAAAAAAAAAAAAA");
   data.emplace_back("TTTTTTTTTTTTTTT");
   data.emplace_back("AAAAAAAAAAAAAAA");
-  auto compressed = shared_tree::create_balanced(data);
+  auto compressed = balanced_shared_tree(data);
 
   if (data.size() != compressed.width()) {
-    std::cerr << "<Tree factory> Test failed: raw data size (" << data.size()
+    std::cerr << "<Tree transposition> Test failed: raw data size (" << data.size()
       << ") does not match compressed data size (" << compressed.width() << ", " << compressed.node_count() << " nodes)\n";
     ++errors;
   }
@@ -224,7 +233,7 @@ auto test_tree_transposition() -> int {
   auto i = 0;
   for (const auto c : compressed) {
     if (data[i] != c) {
-      std::cerr << "<Tree factory> Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
+      std::cerr << "<Tree transposition> Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
         << "\tdata[i]\t\t= " << data[i] << '\n'
         << "\tcompressed[i]\t= " << c << '\n';
       ++errors;
@@ -238,11 +247,23 @@ auto test_tree_transposition() -> int {
 
 auto test_tree_iteration() -> int {
   auto path = "data/chmpxx";
+  // auto path = "../GRCm38.fna";
   auto data = read_genome(path);
-  auto compressed = shared_tree::create_balanced(data);
+  auto compressed = balanced_shared_tree{path};
   auto errors = 0;
 
   auto i = 0;
+  for (const auto c : compressed) {
+    if (data[i] != c) {
+      std::cerr << "<Tree iteration> Test failed: data[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
+        << "\tdata[i]\t\t= " << data[i] << '\n'
+        << "\tcompressed[i]\t= " << c << '\n';
+      ++errors;
+    }
+    ++i;
+  }
+
+  i = 0;
   for (const auto c : compressed) {
     if (compressed[i] != c) {
       std::cerr << "<Tree iteration> Test failed: compressed[i] != compressed[i] for i = " << i << " out of " << data.size() - 1 << '\n'
