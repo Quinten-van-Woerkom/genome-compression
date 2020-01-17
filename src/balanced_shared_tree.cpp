@@ -12,6 +12,97 @@
 #include "fasta_reader.h"
 
 /****************************************************************************
+ * class pointer:
+ *  Pointer type representing references to another node or to a leaf node.
+ */
+/**
+ * Helper function that returns the width of the address space corresponding to
+ * the given segment.
+ */
+constexpr auto address_space(std::size_t segment) noexcept {
+  return 1ull << detail::pointer::address_bits[segment];
+}
+
+/**
+ * Constructor from another pointer. Transformations can be applied to the
+ * pointer, if necessary.
+ * Note that a transformed nullptr must also be a nullptr, so that bits must
+ * be set in this special case.
+ */
+detail::pointer::pointer(const pointer& other, bool mirror, bool transpose)
+: data{other.data},
+  mirror{mirror != other.mirror || other == nullptr},
+  transpose{transpose != other.transpose || other == nullptr},
+  segment{other.segment} {}
+
+/**
+ * Constructor from an index with given similarity transforms.
+ * Stores the index in (segment, offset) format, so that smaller indices can
+ * be represented as shorter pointers.
+ */
+detail::pointer::pointer(std::size_t index, bool mirror, bool transpose)
+: data{index}, mirror{mirror}, transpose{transpose}, segment{0} {
+  while (data >= address_space(segment)) {
+    ++segment;
+    data -= address_space(segment-1);
+  }
+}
+
+/**
+ * Constructs a direct pointer referring to a DNA strand. Since the DNA strands
+ * are smaller in memory than a pointer, they are stored directly.
+ * To keep the pointer-like nature of the data, we store the canonical version
+ * of a leaf node, which is the version among the set of similar leaves that
+ * has the smallest bit representation.
+ */
+detail::pointer::pointer(dna leaf, bool add_mirror, bool add_transpose)
+: segment{0b11} {
+  auto [canonical, mirror_bit, transpose_bit] = leaf.canonical();
+  data = canonical.to_ullong();
+  mirror = mirror_bit != add_mirror;
+  transpose = transpose_bit != add_transpose;
+}
+
+/**
+ * Constructs a null pointer, indicating an empty subtree.
+ * Null pointers have all bits set and are of maximum pointer size. Due to
+ * their infrequent occurrence, this bigger size is not an issue, while it
+ * significantly simplifies the indexing code.
+ * Leaf pointers can be null, too; a fully set bit sequence is not a valid
+ * canonical leaf, so there are no collisions with valid DNA strands.
+ */
+detail::pointer::pointer(std::nullptr_t)
+: mirror{true}, transpose{true}, segment{0b11} {
+  data ^= ~data;
+}
+
+
+/**
+ * Interprets the data as an index pointing to an inner node.
+ */
+auto detail::pointer::index() const noexcept -> std::size_t {
+  assert(!empty());
+  auto offset = data;
+  if (segment >= 0b11) offset += address_space(0b10);
+  if (segment >= 0b10) offset += address_space(0b01);
+  if (segment >= 0b01) offset += address_space(0b00);
+  return offset;
+}
+
+/**
+ * Interprets the data contained in the pointer as a canonical leaf with
+ * applied transformations.
+ */
+auto detail::pointer::leaf() const noexcept -> dna {
+  assert(!empty());
+  auto result = dna{data};
+  if (mirror) result = result.mirrored();
+  if (transpose) result = result.transposed();
+  return result;
+}
+
+
+/****************************************************************************
  * class node:
  *  Node type representing inner nodes in the tree.
  *  Consists of two pointers to nodes or leaves one level down in the tree.
@@ -77,17 +168,13 @@ auto balanced_shared_tree::access_leaf(std::size_t index, pointer current) const
   const auto left = parent_node.left();
   const auto right = parent_node.right();
 
-  auto combine = [](auto next, auto current) {
-    const auto mirror = next.is_mirrored() != current.is_mirrored();
-    const auto transpose = next.is_transposed() != current.is_transposed();
-    return pointer{next.index(), mirror, transpose};
-  };
-
   auto descend_leaf = [&](auto left, auto right) {
     const auto size = (bool)left;
-    if (index < size) return combine(left, current);
+    const auto mirror = current.is_mirrored();
+    const auto transpose = current.is_transposed();
+    if (index < size) return pointer{left, mirror, transpose};
     index -= size;
-    return combine(right, current);
+    return pointer{right, mirror, transpose};
   };
   
   if (current.is_mirrored()) current = descend_leaf(right, left);
@@ -100,9 +187,8 @@ auto balanced_shared_tree::access_leaf(std::size_t index, pointer current) const
  * Returned by value since since the nodes must be immutable anyway.
  */
 auto balanced_shared_tree::access_node(std::size_t layer, pointer pointer) const -> node {
-  assert(layer < nodes.size());
-  if (pointer.index() >= nodes[layer].size())
-    std::cerr << "Pointer index out of bounds: " << pointer.index() << " for a size of " << nodes[layer].size() << " in layer " << layer << '\n';
+  // assert(layer < nodes.size());
+  // assert(pointer.index() < nodes[layer].size());
   return nodes[layer][pointer.index()];
 }
 
@@ -124,17 +210,14 @@ auto balanced_shared_tree::children(std::size_t layer, pointer pointer) const ->
 auto balanced_shared_tree::operator[](std::uint64_t index) const -> dna {
   auto current = root;
 
-  auto combine = [](auto next, auto current) {
-    const auto mirror = next.is_mirrored() != current.is_mirrored();
-    const auto transpose = next.is_transposed() != current.is_transposed();
-    return pointer{next.index(), mirror, transpose};
-  };
-
   auto descend = [&](auto layer, auto left, auto right) {
     const auto size = children(layer, left);
-    if (index < size) return combine(left, current);
+    const auto mirror = current.is_mirrored();
+    const auto transpose = current.is_transposed();
+
+    if (index < size) return pointer{left, mirror, transpose};
     index -= size;
-    return combine(right, current);
+    return pointer(right, mirror, transpose);
   };
 
   for (auto layer = nodes.size()-1; layer > 0; --layer) {
@@ -166,12 +249,9 @@ void balanced_shared_tree::histogram(std::filesystem::path path) const {
   for (auto layer = 1u; layer < nodes.size(); ++layer) {
     auto frequencies = std::vector<unsigned long long>(nodes[layer-1].size(), 0);
 
-    // TODO: this is bugged, fix it
     for (const auto& node : nodes[layer]) {
-      // if (!node.left().empty() && node.left().index() < frequencies.size())
       if (!node.left().empty())
         ++frequencies[node.left().index()];
-      // if (!node.right().empty() && node.right().index() < frequencies.size())
       if (!node.right().empty())
         ++frequencies[node.right().index()];
     }
@@ -196,15 +276,15 @@ void balanced_shared_tree::print_unique(std::ostream& os) const {
   for (int i = nodes.size()-2; i > 0; --i) {
     os << "Layer " << i << " (" << nodes[i].size() << "): ";
     for (auto node : nodes[i]) {
-      if (node.left() >= nodes[i-1].size() || node.right() >= nodes[i-1].size())
-        os << node << ", ";
+      os << node << " (" << std::hash<detail::node>()(node) << "), ";
     }
     os << '\n';
   }
 
-  // os << "Leaves (" << nodes.front().size() << "): ";
-  // for (auto node : nodes.front()) os << node.left().leaf() << ' ' << node.right().leaf() << ", ";
-  // os << '\n';
+  os << "Leaves (" << nodes.front().size() << "): ";
+  for (auto node : nodes.front())
+    os << node.left().leaf() << ' ' << node.right().leaf() << " (" << std::hash<detail::node>()(node) << "), ";
+  os << '\n';
 }
 
 
@@ -298,7 +378,7 @@ void tree_constructor::emplace(
 
   if (insertion.second) {
     parent.emplace_node(layer_index, created_node);
-    layer.emplace_back(index, false, false);
+    layer.emplace_back(index);
   } else {
     auto transform = created_node.transformations(canonical_node);
     layer.emplace_back(index, transform.first, transform.second);

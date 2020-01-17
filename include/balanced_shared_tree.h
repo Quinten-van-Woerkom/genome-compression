@@ -30,58 +30,43 @@ namespace detail {
  */
 class pointer {
 public:
-  pointer(std::uint64_t index, bool mirror, bool transpose)
-  : data{index}, mirror{mirror}, transpose{transpose} {
-    // Ensures that a transformed nullptr is also null
-    const auto is_null = data == (1ull<<61)-1;
-    mirror |= is_null;
-    transpose |= is_null;
-  }
+  static constexpr auto address_bits = std::array{4, 12, 28, 60};
 
-  pointer(dna leaf) {
-    auto [canonical, mirror_bit, transpose_bit] = leaf.canonical();
-    data = canonical.to_ullong();
-    mirror = mirror_bit;
-    transpose = transpose_bit;
-  }
-
-  pointer(std::nullptr_t = nullptr) : pointer{(1ull<<61)-1, true, true} {}
+  pointer(std::nullptr_t = nullptr);
+  pointer(const pointer& other, bool mirror = false, bool transpose = false);
+  pointer(std::size_t index, bool mirror = false, bool transpose = false);
+  pointer(dna leaf, bool mirror = false, bool transpose = false);
 
   bool operator==(const pointer& other) const noexcept { return to_ullong() == other.to_ullong(); }
   bool operator!=(const pointer& other) const noexcept { return to_ullong() != other.to_ullong(); }
   operator bool() const noexcept { return *this != nullptr; }
 
   bool empty() const noexcept { return *this == nullptr; }
-  auto index() const noexcept { assert(!empty()); return data; }
-  auto raw() const noexcept { return data; }
-  auto leaf() const noexcept {
-    assert(!empty());
-    auto result = dna{data};
-    if (mirror) result = result.mirrored();
-    if (transpose) result = result.transposed();
-    return result;
-  }
+  auto canonical() const noexcept { return data | ((std::uint64_t)segment << 62); }
+  auto index() const noexcept -> std::size_t;
+  auto leaf() const noexcept -> dna;
 
   bool is_mirrored() const noexcept { return mirror; }
   bool is_transposed() const noexcept { return transpose; }
   bool is_inverted() const noexcept { return mirror && transpose; }
 
-  auto mirrored() const noexcept { return pointer{data, !mirror, transpose}; }
-  auto transposed() const noexcept { return pointer{data, mirror, !transpose}; }
-  auto inverted() const noexcept { return pointer{data, !mirror, !transpose}; }
+  auto mirrored() const noexcept { return pointer{*this, true, false}; }
+  auto transposed() const noexcept { return pointer{*this, false, true}; }
+  auto inverted() const noexcept { return pointer{*this, true, true}; }
 
   /**
    * Returns the unsigned integer equivalent of the data stored in this
    * pointer.
    */
   auto to_ullong() const noexcept -> unsigned long long {
-    return data | ((std::uint64_t)mirror << 60) | ((std::uint64_t)transpose << 61);
+    return data | ((std::uint64_t)mirror << 60) | ((std::uint64_t)transpose << 61) | ((std::uint64_t)segment << 62);
   }
 
 private:
   std::uint64_t data : 60;
   bool mirror : 1;
   bool transpose : 1;
+  std::size_t segment : 2;
 };
 
 /****************************************************************************
@@ -130,11 +115,10 @@ inline auto& operator<<(std::ostream& os, const detail::node& node) {
 namespace std {
   template<> struct hash<detail::node> {
     auto operator()(const detail::node& n) const noexcept -> std::size_t {
-      const auto left = (n.left().raw() & 0xfffffffffffffff) | (1ull << 62);
-      const auto right = (n.right().raw() & 0xfffffffffffffff) | (1ull << 62);
+      const auto left = n.left().canonical();
+      const auto right = n.right().canonical();
       const auto transposed = n.left().is_transposed() ^ n.right().is_transposed();
       const auto mirrored = n.left().is_mirrored() ^ n.right().is_mirrored();
-      // std::cout << left << ' ' << right << ' ' << transposed << ' ' << mirrored << '\n';
       if (left < right) return detail::hash(1, transposed, mirrored, left, right);
       else return detail::hash(0, transposed, mirrored, right, left);
     }
@@ -255,8 +239,8 @@ auto tree_constructor::reduce_layer(Iterable&& iterable, std::size_t index) -> s
   }
 
   foreach_pair(iterable,
-    [&](const auto& left, const auto& right) { emplace(layer, index, left, right); },
-    [&](const auto& last) { emplace(layer, index, last); }
+    [&](auto left, auto right) { emplace(layer, index, left, right); },
+    [&](auto last) { emplace(layer, index, last); }
   );
 
   return layer;

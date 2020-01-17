@@ -16,18 +16,30 @@
 
 auto test_pointer() -> int {
   auto errors = 0;
-  auto leaf = dna{"ACGTACGTACGTACG"};
-  auto basis = detail::pointer{leaf, false, false};
+  auto leaf = dna{"TTGAACGAGAAGCCG"};
+  auto basis = detail::pointer{leaf};
   auto transposed = basis.transposed();
   auto mirrored = basis.mirrored();
+  auto inner_pointer = detail::pointer{3280, true, true};
+
+  if (basis.leaf() != leaf) {
+    std::cerr << "<Tree pointer> DNA conversion does not match input\n";
+    ++errors;
+  }
 
   if (basis == transposed) {
-    std::cerr << "<Tree pointer> Pointers can never match when transposed\n";
+    std::cerr << "<Tree pointer> Non-null pointers can never match when transposed\n";
     ++errors;
   }
 
   if (basis == mirrored) {
     std::cerr << "<Tree pointer> Pointers that are not invariant under mirroring should not match when mirrored\n";
+    ++errors;
+  }
+
+  if (inner_pointer.index() != 3280) {
+    std::cerr << "<Tree pointer> Index conversion error: "
+      << inner_pointer.index() << " != " << 3280 << '\n';
     ++errors;
   }
 
@@ -126,6 +138,7 @@ auto test_file_reader() -> int {
 
 auto test_tree_factory() -> int {
   auto path = "data/chmpxx";
+  // auto path = "../GRCm38.fna";
   auto data = read_genome(path);
   // auto compressed = shared_tree::create_balanced(data);
   auto compressed = balanced_shared_tree{path};
@@ -174,11 +187,11 @@ auto test_tree_similarity_transforms() -> int {
     std::cerr << "<Tree similarity> Mirrored nodes should compare to be equal\n";
   }
 
-  auto basis_node = node{basis.canonical(), basis.canonical()};
-  auto mirrored_node = node{mirrored.canonical(), mirrored.canonical()};
-  auto transposed_node = node{transposed.canonical(), transposed.canonical()};
-  auto mix_node = node{basis.canonical(), transposed.canonical()};
-  auto mirrored_mix_node = node{both.canonical(), mirrored.canonical()};
+  auto basis_node = node{basis, basis};
+  auto mirrored_node = node{mirrored, mirrored};
+  auto transposed_node = node{transposed, transposed};
+  auto mix_node = node{basis, transposed};
+  auto mirrored_mix_node = node{both, mirrored};
 
   if (basis_node != mirrored_node
     || std::hash<node>()(basis_node) != std::hash<node>()(mirrored_node)) {
@@ -198,8 +211,8 @@ auto test_tree_similarity_transforms() -> int {
     ++errors;
   }
 
-  auto left = node{basis.canonical(), other.canonical()};
-  auto right = node{other.canonical(), basis.canonical()};
+  auto left = node{basis, other};
+  auto right = node{other, basis};
   if (left == right || std::hash<node>()(left) == std::hash<node>()(right)) {
     std::cerr << "<Tree similarity> Nodes with reversed children that are not mirrored should not match if they are not invariant under transformation\n";
     ++errors;
@@ -207,7 +220,8 @@ auto test_tree_similarity_transforms() -> int {
 
   if (tree.node_count() != 3) {
     std::cerr << "<Tree similarity> Similar nodes do not merge: node count is "
-      << tree.node_count() << ", not matching the expected 3\n";
+      << tree.node_count() << ", not matching the expected 3:\n";
+    tree.print_unique(std::cerr);
     ++errors;
   }
 
@@ -279,7 +293,7 @@ auto test_tree_iteration() -> int {
 }
 
 int main(int argc, char* argv[]) {
-  auto errors = test_pointer() + test_chunks() + test_file_reader() + test_node() + test_tree_factory() + test_tree_similarity_transforms() + test_tree_iteration();
+  auto errors = test_pointer() + test_chunks() + test_file_reader() + test_node() + test_tree_factory() + test_tree_similarity_transforms() + test_tree_transposition() + test_tree_iteration();
   if (errors) std::cerr << "Not all tests passed\n";
   return errors;
 }
