@@ -34,7 +34,7 @@ public:
 
   auto transposed() const noexcept -> dna;
   auto mirrored() const noexcept -> dna;
-  auto inverted() const noexcept -> dna { return transposed().inverted(); }
+  auto inverted() const noexcept -> dna { return transposed().mirrored(); }
   auto canonical() const noexcept -> std::tuple<dna, bool, bool>;
   auto to_ullong() const noexcept { return nucleotides.to_ullong(); }
 
