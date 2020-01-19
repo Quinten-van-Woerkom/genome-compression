@@ -10,7 +10,6 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
-#include <iostream>
 #include <filesystem>
 #include <utility>
 #include <vector>
@@ -46,10 +45,6 @@ public:
   auto canonical() const noexcept { return data | ((std::uint64_t)segment << 62); }
   auto index() const noexcept -> std::size_t;
   auto leaf() const noexcept -> dna;
-
-  auto bytes() const noexcept -> std::size_t { return (4 + address_bits[segment])/8; }
-  void serialize(std::ostream& os) const;
-  static auto deserialize(std::istream& is) -> pointer;
 
   bool is_mirrored() const noexcept { return mirror; }
   bool is_transposed() const noexcept { return transpose; }
@@ -93,10 +88,6 @@ public:
   bool operator==(const node& other) const noexcept;
   bool operator!=(const node& other) const noexcept { return !(*this == other); };
   auto transformations(const node& other) const noexcept -> std::pair<bool, bool>;
-  
-  auto bytes() const noexcept { return left().bytes() + right().bytes(); }
-  void serialize(std::ostream& os) const;
-  static auto deserialize(std::istream& is) -> node;
 
 private:
   std::array<pointer, 2> children;
