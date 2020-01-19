@@ -31,7 +31,7 @@ namespace detail {
  */
 class pointer {
 public:
-  static constexpr auto address_bits = std::array{4, 12, 28, 60};
+  static constexpr auto address_bits = std::array{4, 12, 20, 28};
 
   pointer(std::nullptr_t = nullptr);
   pointer(const pointer& other, bool mirror = false, bool transpose = false);
@@ -43,7 +43,7 @@ public:
   operator bool() const noexcept { return *this != nullptr; }
 
   bool empty() const noexcept { return *this == nullptr; }
-  auto canonical() const noexcept { return data | ((std::uint64_t)segment << 62); }
+  auto canonical() const noexcept { return data | ((std::uint64_t)segment << (address_bits.back() + 2)); }
   auto index() const noexcept -> std::size_t;
   auto leaf() const noexcept -> dna;
 
@@ -64,16 +64,18 @@ public:
    * pointer.
    */
   auto to_ullong() const noexcept -> unsigned long long {
-    return data | ((std::uint64_t)mirror << 60) | ((std::uint64_t)transpose << 61) | ((std::uint64_t)segment << 62);
+    return data
+    | ((std::uint64_t)mirror << address_bits.back())
+    | ((std::uint64_t)transpose << (address_bits.back() + 1))
+    | ((std::uint64_t)segment << (address_bits.back() + 2));
   }
 
 private:
-  std::uint64_t data : 60;
+  std::uint64_t data : address_bits.back();
   bool mirror : 1;
   bool transpose : 1;
   std::size_t segment : 2;
 };
-
 /****************************************************************************
  * class node:
  *  Node type representing inner nodes in the tree.

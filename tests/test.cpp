@@ -35,7 +35,7 @@ using detail::pointer;
 auto test_pointer() -> int {
   TEST_START("Tree pointer");
 
-  auto leaf = dna{"TTGAACGAGAAGCCG"};
+  auto leaf = dna::random(3);
   auto basis = detail::pointer{leaf};
   auto transposed = basis.transposed();
   auto mirrored = basis.mirrored();
@@ -136,7 +136,7 @@ auto test_similarity_transforms() -> int {
   TEST_START("Similarity transforms");
 
   {
-    auto basis = dna{"CCTCTGCCTCTGCCT"};
+    auto basis = dna::random(1);
     auto transposed = basis.transposed();
     auto mirrored = basis.mirrored();
     auto inverted = basis.inverted();
@@ -156,8 +156,8 @@ auto test_similarity_transforms() -> int {
   }
 
   {
-    auto basis = dna{"CCTCTGCCTCTGCCT"};
-    auto other = dna{"CTGCCTCTGCCTCTG"};
+    auto basis = dna::random(1);
+    auto other = dna::random(42);
     auto left = node{basis, other};
     auto right = node{other, basis};
 
@@ -165,7 +165,7 @@ auto test_similarity_transforms() -> int {
   }
 
   {
-    auto basis = dna{"CCTCTGCCTCTGCCT"};
+    auto basis = dna::random(1);
     auto transposed = basis.transposed();
     auto mirrored = basis.mirrored();
     auto inverted = basis.inverted();
@@ -186,8 +186,8 @@ auto test_similarity_transforms() -> int {
 auto test_tree_transposition() -> int {
   TEST_START("Tree transposition");
 
-  auto a = dna{"AAAAAAAAAAAAAAA"};
-  auto t = dna{"TTTTTTTTTTTTTTT"};
+  auto a = dna::random(0);
+  auto t = a.transposed();
   auto data = std::vector<dna>{a, a, t, a};
   auto compressed = balanced_shared_tree(data);
 
@@ -215,9 +215,9 @@ auto test_serialization() -> int {
   TEST_START("Serialization");
 
   {
-    auto a = dna{"CCTCTGCCTCTGCCT"};
-    auto b = dna{"CTGCCTCTGCCTCTG"};
-    auto c = dna{"ATATATATATATTAC"};
+    auto a = dna::random(0);
+    auto b = dna::random(1);
+    auto c = dna::random(2);
 
     auto basis = pointer{a};
     auto other = pointer{b};
@@ -234,7 +234,7 @@ auto test_serialization() -> int {
     auto sother = pointer::deserialize(stream);
     auto sleft = node::deserialize(stream);
     auto sright = node::deserialize(stream);
-    
+
     expects(basis == sbasis, "Serialization and deserialization should result in identical pointers: ", basis, " != ", sbasis);
     expects(other == sother, "Serialization and deserialization should result in identical pointers: ", other, " != ", sother);
     expects(left == sleft, "Serialization and deserialization should result in identical nodes: ", left, " != ", sleft);
