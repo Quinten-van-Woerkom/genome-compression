@@ -101,6 +101,43 @@ auto detail::pointer::leaf() const noexcept -> dna {
   return result;
 }
 
+/**
+ * Serializes the pointer to the given output stream in compressed format.
+ * Starts with the 4 header bits and the most significant 4 bits, then
+ * repeatedly stores the next most significant byte, until no more bytes
+ * remain.
+ */
+void detail::pointer::serialize(std::ostream& os) const {
+  int index = address_bits[segment]-4;
+  std::uint8_t store = ((data >> index) & 0xf) | mirror << 4 | transpose << 5 | segment << 6;
+  os << store;
+  for (index -= 8; index >= 0; index -= 8) {
+    store = static_cast<std::uint8_t>(data >> index);
+    os << store;
+  }
+}
+
+/**
+ * Loads a pointer from an input stream.
+ */
+auto detail::pointer::deserialize(std::istream& is) -> pointer {
+  auto result = pointer{};
+  std::uint8_t loaded;
+  is.get(reinterpret_cast<char&>(loaded));
+  auto index = address_bits[result.segment]-4;
+  
+  result.segment = (loaded >> 6) & 3u;
+  result.transpose = (loaded >> 5) & 1u;
+  result.mirror = (loaded >> 4) & 1u;
+  result.data = ((std::uint64_t)loaded & 0xf) << index;
+
+  for (index -= 8; index >= 0; index -= 8) {
+    is.get(reinterpret_cast<char&>(loaded));
+    result.data |= ((std::uint64_t)loaded << index);
+  }
+  return result;
+}
+
 
 /****************************************************************************
  * class node:
@@ -128,6 +165,25 @@ auto detail::node::transformations(const node& other) const noexcept -> std::pai
   if (mirrored().children == other.children) return {true, false};
   if (transposed().children == other.children) return {false, true};
   else return {true, true};
+}
+
+/**
+ * Serializes the node to the given output stream.
+ * First, the left pointer is stored, and then the right pointer.
+ */
+void detail::node::serialize(std::ostream& os) const {
+  children[0].serialize(os);
+  children[1].serialize(os);
+}
+
+/**
+ * Deserializes a node from an input stream.
+ * The node is assumed to be stored in compressed format.
+ */
+auto detail::node::deserialize(std::istream& is) -> node {
+  auto left = pointer::deserialize(is);
+  auto right = pointer::deserialize(is);
+  return node{left, right};
 }
 
 

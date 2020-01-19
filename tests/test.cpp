@@ -7,12 +7,15 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 #include "balanced_shared_tree.h"
 #include "dna.h"
 #include "fasta_reader.h"
-#include "shared_tree.h"
 #include "utility.h"
+
+using detail::node;
+using detail::pointer;
 
 #define TEST_START(name) \
     auto errors = 0;\
@@ -208,6 +211,34 @@ auto test_tree_transposition() -> int {
   TEST_END("Tree transposition");
 }
 
+auto test_serialization() -> int {
+  TEST_START("Serialization");
+
+  {
+    auto basis = pointer{dna{"CCTCTGCCTCTGCCT"}};
+    auto other = pointer{dna{"CTGCCTCTGCCTCTG"}};
+    auto left = node{basis, other};
+    auto right = node{other, basis};
+    auto stream = std::stringstream{};    
+
+    basis.serialize(stream);
+    other.serialize(stream);
+    left.serialize(stream);
+    right.serialize(stream);
+
+    auto sbasis = pointer::deserialize(stream);
+    auto sother = pointer::deserialize(stream);
+    auto sleft = node::deserialize(stream);
+    auto sright = node::deserialize(stream);
+    expects(basis == sbasis, "Serialization and deserialization should result in identical pointers: ", basis, " != ", sbasis);
+    expects(other == sother, "Serialization and deserialization should result in identical pointers: ", other, " != ", sother);
+    expects(left == sleft, "Serialization and deserialization should result in identical nodes: ", left, " != ", sleft);
+    expects(right == sright, "Serialization and deserialization should result in identical nodes: ", right, " != ", sright);
+  }
+
+  TEST_END("Serialization");
+}
+
 auto test_tree_iteration() -> int {
   TEST_START("Tree iteration");
 
@@ -241,7 +272,7 @@ auto test_tree_iteration() -> int {
 }
 
 int main(int argc, char* argv[]) {
-  auto errors = test_pointer() + test_chunks() + test_file_reader() + test_tree_factory() + test_similarity_transforms() + test_tree_transposition() + test_tree_iteration();
+  auto errors = test_pointer() + test_chunks() + test_file_reader() + test_tree_factory() + test_similarity_transforms() + test_tree_transposition() + test_serialization() + test_tree_iteration();
   if (errors) std::cerr << "Not all tests passed\n";
   return errors;
 }
