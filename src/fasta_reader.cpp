@@ -19,6 +19,8 @@ fasta_reader::fasta_reader(fs::path path, std::size_t buffer_size)
     exit(1);
   }
   buffer.resize(buffer_size - buffer_size%dna::size() + 1);
+  background_buffer.resize(buffer_size - buffer_size%dna::size() + 1);
+  load_buffer();
   load_buffer();
 }
 
@@ -39,27 +41,32 @@ void fasta_reader::next_symbol() {
  *  Loads the next data in the FASTA file into the current buffer.
  */
 void fasta_reader::load_buffer() {
-  auto position = 0lu;
-
-  while (position < buffer.size()-1) {
-    file.clear();
-    if (file.peek() == '>' || file.peek() == '\n') {
-      file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-    }
-    file.getline(&buffer[position], buffer.size() - position);
-
-    // When a newline is found: failbit == false, actual line size = gcount() - 1
-    // When the buffer end is reached: failbit == true, actual line size = gcount()
-    const auto size = file.fail() ? file.gcount() : file.gcount() - 1;
-    position += size;
-    
-    if (file.eof()) {
-      buffer.resize(position - position%dna::size());
-      index = 0;
-      return;
-    }
-  }
+  if (background_loader.joinable()) background_loader.join();
+  std::swap(background_buffer, buffer);
   index = 0;
+
+  auto load_in_background = [&]() {
+    auto position = 0lu;
+    while (position < background_buffer.size()-1) {
+      file.clear();
+      if (file.peek() == '>' || file.peek() == '\n') {
+        file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+      }
+      file.getline(&background_buffer[position], background_buffer.size() - position);
+
+      // When a newline is found: failbit == false, actual line size = gcount() - 1
+      // When the buffer end is reached: failbit == true, actual line size = gcount()
+      const auto size = file.fail() ? file.gcount() : file.gcount() - 1;
+      position += size;
+      
+      if (file.eof()) {
+        background_buffer.resize(position - position%dna::size());
+        return;
+      }
+    }
+  };
+
+  background_loader = std::thread{load_in_background};
 }
 
 /**

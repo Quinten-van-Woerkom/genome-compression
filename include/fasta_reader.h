@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <iostream>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 #include "dna.h"
@@ -20,9 +21,13 @@ class fasta_reader {
 public:
   using value_type = dna;
 
-  fasta_reader(std::filesystem::path path, std::size_t buffer_size = (1<<20));
+  fasta_reader(std::filesystem::path path, std::size_t buffer_size = (1<<25));
   fasta_reader(const fasta_reader&) = delete;
   fasta_reader(fasta_reader&&) = default;
+
+  ~fasta_reader() {
+    if (background_loader.joinable()) background_loader.join();
+  }
 
   auto eof() const -> bool { return end_of_file; }
   auto current_symbol() -> dna { return std::string_view{buffer.data() + index, dna::size()}; }
@@ -55,11 +60,13 @@ public:
   auto end() { return iterator{*this}; }
 
 private:
+  std::vector<char> background_buffer;
   std::vector<char> buffer;
   std::ifstream file;
   std::filesystem::path path;
   std::size_t index;
   bool end_of_file = false;
+  std::thread background_loader;
 };
 
 auto read_genome(const fs::path path) -> std::vector<dna>;
