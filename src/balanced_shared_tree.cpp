@@ -115,7 +115,7 @@ void detail::pointer::serialize(std::ostream& os) const {
   for (index -= 8; index >= 0; index -= 8) {
     store = static_cast<std::uint8_t>(data >> index);
     // os.put(reinterpret_cast<char&>(store));
-  os.write(reinterpret_cast<char*>(&store), sizeof(store));
+    os.write(reinterpret_cast<char*>(&store), sizeof(store));
   }
 }
 
