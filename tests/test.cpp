@@ -215,11 +215,15 @@ auto test_serialization() -> int {
   TEST_START("Serialization");
 
   {
-    auto basis = pointer{dna{"CCTCTGCCTCTGCCT"}};
-    auto other = pointer{dna{"CTGCCTCTGCCTCTG"}};
+    auto a = dna{"CCTCTGCCTCTGCCT"};
+    auto b = dna{"CTGCCTCTGCCTCTG"};
+    auto c = dna{"ATATATATATATTAC"};
+
+    auto basis = pointer{a};
+    auto other = pointer{b};
     auto left = node{basis, other};
     auto right = node{other, basis};
-    auto stream = std::stringstream{};    
+    auto stream = std::stringstream{};
 
     basis.serialize(stream);
     other.serialize(stream);
@@ -230,10 +234,23 @@ auto test_serialization() -> int {
     auto sother = pointer::deserialize(stream);
     auto sleft = node::deserialize(stream);
     auto sright = node::deserialize(stream);
+    
     expects(basis == sbasis, "Serialization and deserialization should result in identical pointers: ", basis, " != ", sbasis);
     expects(other == sother, "Serialization and deserialization should result in identical pointers: ", other, " != ", sother);
     expects(left == sleft, "Serialization and deserialization should result in identical nodes: ", left, " != ", sleft);
     expects(right == sright, "Serialization and deserialization should result in identical nodes: ", right, " != ", sright);
+
+    auto data = std::vector{a, b, b, a, c, a};
+    auto tree = balanced_shared_tree{data};
+    stream = std::stringstream{};
+    tree.serialize(stream);
+    auto load = balanced_shared_tree::deserialize(stream);
+
+    expects(tree.width() == load.width(), "Serialization and deserialization should result in identical tree size");
+
+    for (auto i = 0u; i < tree.width(); ++i) {
+      expects(tree[i] == load[i], "Serialization and deserialization should result in identical tree: ", tree[i], " != ", load[i]);
+    }
   }
 
   TEST_END("Serialization");

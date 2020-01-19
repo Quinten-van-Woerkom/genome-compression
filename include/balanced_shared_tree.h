@@ -144,6 +144,8 @@ public:
   using pointer = detail::pointer;
   using node = detail::node;
 
+  balanced_shared_tree() = default;
+
   balanced_shared_tree(std::filesystem::path path)
   : balanced_shared_tree{fasta_reader{path}} {};
 
@@ -170,6 +172,7 @@ public:
 
   auto bytes() const noexcept -> std::size_t;
   void serialize(std::ostream& os) const;
+  static auto deserialize(std::istream& is) -> balanced_shared_tree;
 
   struct iterator {
     using pointer = balanced_shared_tree::pointer;

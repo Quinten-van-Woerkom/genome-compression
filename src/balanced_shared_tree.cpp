@@ -55,12 +55,12 @@ detail::pointer::pointer(std::size_t index, bool mirror, bool transpose)
  * of a leaf node, which is the version among the set of similar leaves that
  * has the smallest bit representation.
  */
-detail::pointer::pointer(dna leaf, bool add_mirror, bool add_transpose)
-: segment{0b11} {
+detail::pointer::pointer(dna leaf, bool add_mirror, bool add_transpose) {
   auto [canonical, mirror_bit, transpose_bit] = leaf.canonical();
   data = canonical.to_ullong();
   mirror = mirror_bit != add_mirror;
   transpose = transpose_bit != add_transpose;
+  segment ^= ~segment;
 }
 
 /**
@@ -110,10 +110,12 @@ auto detail::pointer::leaf() const noexcept -> dna {
 void detail::pointer::serialize(std::ostream& os) const {
   int index = address_bits[segment]-4;
   std::uint8_t store = ((data >> index) & 0xf) | mirror << 4 | transpose << 5 | segment << 6;
-  os << store;
+  // os.put(reinterpret_cast<char&>(store));
+  os.write(reinterpret_cast<char*>(&store), sizeof(store));
   for (index -= 8; index >= 0; index -= 8) {
     store = static_cast<std::uint8_t>(data >> index);
-    os << store;
+    // os.put(reinterpret_cast<char&>(store));
+  os.write(reinterpret_cast<char*>(&store), sizeof(store));
   }
 }
 
@@ -123,16 +125,18 @@ void detail::pointer::serialize(std::ostream& os) const {
 auto detail::pointer::deserialize(std::istream& is) -> pointer {
   auto result = pointer{};
   std::uint8_t loaded;
-  is.get(reinterpret_cast<char&>(loaded));
-  auto index = address_bits[result.segment]-4;
-  
+  // is.get(reinterpret_cast<char&>(loaded));
+  is.read(reinterpret_cast<char*>(&loaded), sizeof(loaded));
   result.segment = (loaded >> 6) & 3u;
   result.transpose = (loaded >> 5) & 1u;
   result.mirror = (loaded >> 4) & 1u;
+  
+  auto index = address_bits[result.segment]-4;
   result.data = ((std::uint64_t)loaded & 0xf) << index;
 
   for (index -= 8; index >= 0; index -= 8) {
-    is.get(reinterpret_cast<char&>(loaded));
+    // is.get(reinterpret_cast<char&>(loaded));
+    is.read(reinterpret_cast<char*>(&loaded), sizeof(loaded));
     result.data |= ((std::uint64_t)loaded << index);
   }
   return result;
@@ -364,9 +368,32 @@ auto balanced_shared_tree::bytes() const noexcept -> std::size_t {
 void balanced_shared_tree::serialize(std::ostream& os) const {
   root.serialize(os);
   for (const auto& layer : nodes) {
-    os << static_cast<std::uint64_t>(layer.size());
+    auto size = std::uint64_t(layer.size());
+    os.write(reinterpret_cast<char*>(&size), sizeof(size));
+
     for (const auto& node : layer) node.serialize(os);
   }
+}
+
+/**
+ * Deserializes a balanced tree from an input stream.
+ * Assumes it is stored starting with the root, followed by each layer, with
+ * each layer stored as its size followed by the serialized nodes.
+ */
+auto balanced_shared_tree::deserialize(std::istream& is) -> balanced_shared_tree {
+  auto result = balanced_shared_tree{};
+  result.root = pointer::deserialize(is);
+  std::uint64_t size;
+  while (true) {
+    is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    if (!is) break;
+
+    result.nodes.emplace_back();
+    result.nodes.back().reserve(size);
+    for (auto i = 0u; i < (int)size; ++i)
+      result.nodes.back().emplace_back(node::deserialize(is));
+  }
+  return result;
 }
 
 
