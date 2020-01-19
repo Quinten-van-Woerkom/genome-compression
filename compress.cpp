@@ -32,7 +32,7 @@ int main(int argc, char* argv[]) {
 
   std::cout << "Done!\n" << std::flush;
 
-  auto compressed_size = compressed.node_count();
+  auto compressed_size = compressed.bytes();
   auto compressed_width = compressed.width();
   auto file_size = std::filesystem::file_size(path);
   if (!histogram.empty()) {
@@ -44,8 +44,8 @@ int main(int argc, char* argv[]) {
     << "Number of data units: " << compressed_width << '\n'
     << "Number of base pairs: " << compressed_width*dna::size() << '\n'
     << "File size: " << file_size << " bytes\n"
-    << "Compressed size: " << compressed_size*sizeof(balanced_shared_tree::node) << " bytes (" << compressed_size << " nodes)\n"
-    << "Compression ratio: " << double(compressed_size*sizeof(balanced_shared_tree::node))/double(file_size) << '\n'
+    << "Compressed size: " << compressed_size << " bytes (" << compressed.node_count() << " nodes)\n"
+    << "Compression ratio: " << double(compressed_size)/double(file_size) << '\n'
     << "Time: " << time.count() << "ms\n";
 
   return 0;

@@ -343,6 +343,32 @@ void balanced_shared_tree::print_unique(std::ostream& os) const {
   os << '\n';
 }
 
+/**
+ * Computes the number of bytes required to store the compressed tree.
+ */
+auto balanced_shared_tree::bytes() const noexcept -> std::size_t {
+  auto memory = root.bytes();
+  for (const auto& layer : nodes) {
+    memory += 8;  // Size of each layer is stored as 64 bits
+    for (const auto& node : layer) memory += node.bytes();
+  }
+  return memory;
+}
+
+/**
+ * Serializes the balanced tree to an output stream.
+ * First stores the root, then all layers.
+ * Each layer is stored as its length (as std::uint64_t), followed by all
+ * separate nodes.
+ */
+void balanced_shared_tree::serialize(std::ostream& os) const {
+  root.serialize(os);
+  for (const auto& layer : nodes) {
+    os << static_cast<std::uint64_t>(layer.size());
+    for (const auto& node : layer) node.serialize(os);
+  }
+}
+
 
 /******************************************************************************
  * class balanced_shared_tree::iterator:

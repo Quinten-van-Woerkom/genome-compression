@@ -168,6 +168,9 @@ public:
   void histogram(std::filesystem::path) const;
   void print_unique(std::ostream& os) const;
 
+  auto bytes() const noexcept -> std::size_t;
+  void serialize(std::ostream& os) const;
+
   struct iterator {
     using pointer = balanced_shared_tree::pointer;
     using node = balanced_shared_tree::node;
@@ -212,7 +215,6 @@ public:
   using pointer = balanced_shared_tree::pointer;
   using node = balanced_shared_tree::node;
   using hash_map = robin_hood::unordered_flat_map<node, std::uint64_t>;
-  // using hash_map = std::unordered_map<node, std::uint64_t>;
 
   tree_constructor(balanced_shared_tree& parent);
 
