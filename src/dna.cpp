@@ -153,7 +153,8 @@ auto dna::mirrored() const noexcept -> dna {
  * transformation to transform from the current to the canonical
  * representation.
  * The third boolean represents whether or not a strand is invariant under
- * mirroring.
+ * mirroring. To determine this, we use the fact that all similar nodes are
+ * invariant if any one is.
  */
 auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool, bool> {
   const auto is_invariant = invariant();
@@ -162,10 +163,6 @@ auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool, bool> {
   const auto mirror = std::tuple{mirrored(), true, false, is_invariant};
   const auto both = std::tuple{transposed().mirrored(), true, true, is_invariant};
 
-  // if (transpose < current) current = transpose;
-  // if (mirror < current) current = mirror;
-  // if (both < current) current = both;
-  // return current;
   return variadic_min(current, transpose, mirror, both);
 }
 
