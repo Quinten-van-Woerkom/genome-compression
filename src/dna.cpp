@@ -9,7 +9,6 @@
 #include <tuple>
 
 #include "fasta_reader.h"
-#include "shared_tree.h"
 #include "utility.h"
 
 namespace fs = std::filesystem;
@@ -145,12 +144,15 @@ auto dna::mirrored() const noexcept -> dna {
  * The booleans returned indicate the requirement of mirroring and/or
  * transformation to transform from the current to the canonical
  * representation.
+ * The third boolean represents whether or not a strand is invariant under
+ * mirroring.
  */
-auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool> {
-  auto current = std::tuple{*this, false, false};
-  const auto transpose = std::tuple{transposed(), false, true};
-  const auto mirror = std::tuple{mirrored(), true, false};
-  const auto both = std::tuple{transposed().mirrored(), true, true};
+auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool, bool> {
+  const auto is_invariant = invariant();
+  auto current = std::tuple{*this, false, false, is_invariant};
+  const auto transpose = std::tuple{transposed(), false, true, is_invariant};
+  const auto mirror = std::tuple{mirrored(), true, false, is_invariant};
+  const auto both = std::tuple{transposed().mirrored(), true, true, is_invariant};
 
   if (transpose < current) current = transpose;
   if (mirror < current) current = mirror;
@@ -227,5 +229,6 @@ void dna::set_nucleotide(std::size_t index, nac code) {
 auto operator<<(std::ostream& os, const dna& dna) -> std::ostream& {
   for (auto i = 0u; i < dna.size(); ++i)
     os << dna.nucleotide(i);
+  os << " (" << dna.invariant() << ')';
   return os;
 }

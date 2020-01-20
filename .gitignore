@@ -40,5 +40,8 @@ local_alignment
 #VS Code files
 .vscode/
 
+#DAG-compressed files can be excluded, too
+*.dag
+
 #But do not exclude Makefile
 !Makefile

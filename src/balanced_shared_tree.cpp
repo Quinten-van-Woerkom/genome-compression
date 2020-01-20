@@ -27,39 +27,45 @@ constexpr auto address_space(std::size_t segment) noexcept {
 /**
  * Constructor from another pointer. Transformations can be applied to the
  * pointer, if necessary.
- * Note that a transformed nullptr must also be a nullptr, so that bits must
- * be set in this special case.
+ * Note that a transposed nullptr must also be a nullptr, so that bits must
+ * be set in this special case. This is the only case where a pointer is
+ * invariant under transposition.
  */
-detail::pointer::pointer(const pointer& other, bool mirror, bool transpose)
+detail::pointer::pointer(const pointer& other, bool mirror_, bool transpose_)
 : data{other.data},
-  mirror{mirror != other.mirror || other == nullptr},
-  transpose{transpose != other.transpose || other == nullptr},
-  segment{other.segment} {}
+  mirror{mirror_ != other.mirror && !other.invariant && other != nullptr},
+  transpose{transpose_ != other.transpose && other != nullptr},
+  segment{other.segment},
+  invariant{other.invariant} {
+    assert(!(mirror && invariant));
+  }
 
 /**
  * Constructor from an index with given similarity transforms.
  * Stores the index in (segment, offset) format, so that smaller indices can
  * be represented as shorter pointers.
  */
-detail::pointer::pointer(std::size_t index, bool mirror, bool transpose)
-: data{index}, mirror{mirror}, transpose{transpose}, segment{0} {
+detail::pointer::pointer(std::size_t index, bool mirror_, bool transpose_, bool invariant_)
+: data{index}, mirror{mirror_ && !invariant_}, transpose{transpose_}, segment{0}, invariant{invariant_} {
   while (data >= address_space(segment)) {
     ++segment;
     data -= address_space(segment-1);
   }
+  assert(!(mirror && invariant));
 }
 
 /**
  * Constructs a null pointer, indicating an empty subtree.
- * Null pointers have all bits set and are of maximum pointer size. Due to
+ * Null pointers have all data bits set and are of maximum pointer size. Due to
  * their infrequent occurrence, this bigger size is not an issue, while it
  * significantly simplifies the indexing code.
- * Leaf pointers can be null, too; a fully set bit sequence is not a valid
- * canonical leaf, so there are no collisions with valid DNA strands.
+ * Mirror and transpose are false for all null pointers and their
+ * transformations.
  */
 detail::pointer::pointer(std::nullptr_t)
-: mirror{true}, transpose{true}, segment{0b11} {
+: mirror{false}, transpose{false}, segment{0b11}, invariant{false} {
   data ^= ~data;
+  assert(!(mirror && invariant));
 }
 
 
@@ -101,6 +107,7 @@ auto detail::pointer::deserialize(std::istream& is) -> pointer {
   result.segment = (loaded >> 6) & 3u;
   result.transpose = (loaded >> 5) & 1u;
   result.mirror = (loaded >> 4) & 1u;
+  if (result.is_invariant()) std::cerr << "Invariant should be false when deserializing\n";
   
   auto index = address_bits[result.segment]-4;
   result.data = ((std::uint64_t)loaded & 0xf) << index;
@@ -340,7 +347,7 @@ void balanced_shared_tree::frequency_sort() {
 
     auto update = [&](auto old) {
       if (old.empty()) return old;
-      else return pointer{new_indices[old.index()], old.is_mirrored(), old.is_transposed()};
+      else return pointer{new_indices[old.index()], old.is_mirrored(), old.is_transposed(), old.is_invariant()};
     };
 
     std::transform(nodes[0].begin(), nodes[0].end(), nodes[0].begin(),
@@ -367,7 +374,7 @@ void balanced_shared_tree::frequency_sort() {
 
     auto update = [&](auto old) {
       if (old.empty()) return old;
-      else return pointer{new_indices[old.index()], old.is_mirrored(), old.is_transposed()};
+      else return pointer{new_indices[old.index()], old.is_mirrored(), old.is_transposed(), old.is_transposed()};
     };
 
     std::transform(nodes[layer].begin(), nodes[layer].end(), nodes[layer].begin(),
@@ -519,14 +526,12 @@ tree_constructor::tree_constructor(balanced_shared_tree& parent)
  * inserts it into the map and into the tree dictionary.
  */
 auto tree_constructor::emplace_leaf(dna leaf) -> pointer {
-  auto [canonical, mirror, transpose] = leaf.canonical();
-  auto insertion = leaves.emplace(canonical, parent.leaf_count());
-  auto index = (*insertion.first).second;
+  const auto [canonical, mirror, transpose, invariant] = leaf.canonical();
+  const auto insertion = leaves.emplace(canonical, parent.leaf_count());
+  const auto index = (*insertion.first).second;
 
-  if (insertion.second) {
-    parent.emplace_leaf(canonical);
-  }
-  return pointer{index, mirror, transpose};
+  if (insertion.second) parent.emplace_leaf(canonical);
+  return pointer{index, mirror, transpose, invariant};
 }
 
 /**
@@ -554,17 +559,18 @@ auto tree_constructor::emplace_leaves(dna last) -> pointer {
  */
 auto tree_constructor::emplace_node(std::size_t layer, pointer left, pointer right) -> pointer
 {
-  auto created_node = node{left, right};
-  auto insertion = nodes[layer].emplace(created_node, parent.node_count(layer));
-  auto canonical_node = (*insertion.first).first;
-  auto index = (*insertion.first).second;
+  const auto created_node = node{left, right};
+  const auto insertion = nodes[layer].emplace(created_node, parent.node_count(layer));
+  const auto canonical_node = (*insertion.first).first;
+  const auto index = (*insertion.first).second;
+  const auto invariant = (left.is_invariant() && right.is_invariant()) || (left == right.mirrored());
 
   if (insertion.second) {
     parent.emplace_node(layer, created_node);
-    return pointer{index, false, false};
+    return pointer{index, false, false, invariant};
   } else {
     auto transform = created_node.transformations(canonical_node);
-    return pointer{index, transform.first, transform.second};
+    return pointer{index, transform.first, transform.second, invariant};
   }
 }
 

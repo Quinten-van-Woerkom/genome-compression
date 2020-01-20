@@ -36,7 +36,7 @@ using detail::pointer;
 auto test_pointer() -> int {
   TEST_START("Tree pointer");
 
-  auto basis = detail::pointer{3280, false, false};
+  auto basis = detail::pointer{3280, false, false, false};
   auto transposed = basis.transposed();
   auto mirrored = basis.mirrored();
 
@@ -133,7 +133,7 @@ auto test_similarity_transforms() -> int {
   TEST_START("Similarity transforms");
 
   {
-    auto basis = pointer{42, false, false};
+    auto basis = pointer{42, false, false, false};
     auto transposed = basis.transposed();
     auto mirrored = basis.mirrored();
     auto inverted = basis.inverted();
@@ -153,8 +153,8 @@ auto test_similarity_transforms() -> int {
   }
 
   {
-    auto basis = pointer{1, true, false};
-    auto other = pointer{4, false, false};
+    auto basis = pointer{1, true, false, false};
+    auto other = pointer{4, false, false, false};
     auto left = node{basis, other};
     auto right = node{other, basis};
 
@@ -175,6 +175,27 @@ auto test_similarity_transforms() -> int {
         "Similar modes should merge: node count is ", tree.node_count(),
         ", not matching the expected 2"
     );
+  }
+
+  {
+    auto a = pointer{0, false, false, true};
+    auto b = pointer{1, true, false, false};
+    auto c = b.mirrored();
+    auto lhs = node{a, b};
+    auto rhs = node{c, a};
+
+    expects(lhs == rhs, "When invariant under transformation, a pointer should serve as both itself and its mirror");
+    expects(std::hash<node>()(lhs) == std::hash<node>()(rhs), "Nodes that are equal under invariance should have the same hash");
+  }
+
+  {
+    auto a = dna{"AAAAAAAAAAAA"};
+    auto b = dna{"ACTGACTGACTG"};
+    auto c = b.mirrored();
+    auto data = std::vector{a, b, c, a};
+    auto tree = balanced_shared_tree{data};
+
+    expects(tree.node_count() == 2, "Leaves that are invariant under transformation should be considered as such when merging:\n", tree);
   }
 
   TEST_END("Similarity transforms");
@@ -220,8 +241,8 @@ auto test_serialization() -> int {
     auto sa = dna::deserialize(stream);
     expects(a == sa, "Serialization and deserialization should result in identical dna: ", a, " != ", sa);
 
-    auto basis = pointer{0, true, false};
-    auto other = pointer{42, false, false};
+    auto basis = pointer{0, true, false, false};
+    auto other = pointer{42, false, false, false};
     auto left = node{basis, other};
     auto right = node{other, basis};
     stream = std::stringstream{};

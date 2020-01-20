@@ -29,6 +29,9 @@ namespace detail {
  *  index, but also two transformation bits to allow similar nodes to be
  *  stored as a single canonical node referred to with annotated pointers
  *  indicating the transformation applied to obtain the correct node.
+ *  A third bit is stored to denote whether or not the node pointed to is
+ *  invariant under mirroring. This bit is not stored to disk but only used
+ *  during construction.
  */
 class pointer {
 public:
@@ -36,8 +39,7 @@ public:
 
   pointer(std::nullptr_t = nullptr);
   pointer(const pointer& other, bool mirror = false, bool transpose = false);
-  pointer(std::size_t index, bool mirror = false, bool transpose = false);
-  // pointer(dna leaf, bool mirror = false, bool transpose = false);
+  pointer(std::size_t index, bool mirror, bool transpose, bool invariant);
 
   bool operator==(const pointer& other) const noexcept { return to_ullong() == other.to_ullong(); }
   bool operator!=(const pointer& other) const noexcept { return to_ullong() != other.to_ullong(); }
@@ -55,10 +57,11 @@ public:
   bool is_mirrored() const noexcept { return mirror; }
   bool is_transposed() const noexcept { return transpose; }
   bool is_inverted() const noexcept { return mirror && transpose; }
+  bool is_invariant() const noexcept { return invariant; }
 
-  auto mirrored() const noexcept { return pointer{*this, true, false}; }
+  auto mirrored() const noexcept { return invariant ? *this : pointer{*this, true, false}; }
   auto transposed() const noexcept { return pointer{*this, false, true}; }
-  auto inverted() const noexcept { return pointer{*this, true, true}; }
+  auto inverted() const noexcept { return invariant ? transposed() : pointer{*this, true, true}; }
 
   /**
    * Returns the unsigned integer equivalent of the data stored in this
@@ -76,7 +79,15 @@ private:
   bool mirror : 1;
   bool transpose : 1;
   std::size_t segment : 2;
+  bool invariant : 1; // Only used in construction, not actually stored to disk
 };
+
+inline auto& operator<<(std::ostream& os, const detail::pointer& pointer) {
+  if (pointer.empty()) return os << "empty";
+  else return os << '(' << pointer.index() << ": " << pointer.is_mirrored()
+    << pointer.is_transposed() << pointer.is_invariant() << ')';
+}
+
 /****************************************************************************
  * class node:
  *  Node type representing inner nodes in the tree.
@@ -104,19 +115,10 @@ public:
 private:
   std::array<pointer, 2> children;
 };
-}
-
-/******************************************************************************
- * ostream operators
- *  Ostream output formatting for pointers and nodes.
- */
-inline auto& operator<<(std::ostream& os, const detail::pointer& pointer) {
-  if (pointer.empty()) return os << "empty";
-  else return os << "index " << pointer.index();
-}
 
 inline auto& operator<<(std::ostream& os, const detail::node& node) {
   return os << "node<" << node.left() << ", " << node.right() << ">";
+}
 }
 
 
@@ -130,9 +132,11 @@ namespace std {
       const auto left = n.left().canonical();
       const auto right = n.right().canonical();
       const auto transposed = n.left().is_transposed() ^ n.right().is_transposed();
-      const auto mirrored = n.left().is_mirrored() ^ n.right().is_mirrored();
-      if (left < right) return detail::hash(1, transposed, mirrored, left, right);
-      else return detail::hash(0, transposed, mirrored, right, left);
+      const auto mirrored = (n.left().is_mirrored() ^ n.right().is_mirrored());
+      const auto invariant = (n.left().is_invariant() || n.right().is_invariant()) || (n.left().mirrored() == n.right());
+      // std::cout << n << ": " << left << ',' << right << ',' << transposed << ',' << (mirrored || invariant) << '\n';
+      if (left < right) return detail::hash(1, transposed, mirrored || invariant, left, right);
+      else return detail::hash(invariant, transposed, mirrored || invariant, right, left);
     }
   };
 }
@@ -180,6 +184,8 @@ public:
   static auto deserialize(std::istream& is) -> balanced_shared_tree;
   void save(std::filesystem::path) const;
 
+  friend inline auto operator<<(std::ostream& os, const balanced_shared_tree& tree) -> std::ostream&;
+
   struct iterator {
     using pointer = balanced_shared_tree::pointer;
     using node = balanced_shared_tree::node;
@@ -213,6 +219,19 @@ private:
   std::vector<dna> leaves;
   pointer root;
 };
+
+inline auto operator<<(std::ostream& os, const balanced_shared_tree& tree) -> std::ostream& {
+  os << "Leaves (" << tree.leaves.size() << "):";
+  for (const auto& leaf : tree.leaves) os << ' ' << leaf;
+  os << '\n';
+
+  for (const auto& layer : tree.nodes) {
+    os << "Layer (" << layer.size() << "):";
+    for (const auto& node : layer) os << ' ' << node;
+    os << '\n';
+  }
+  return os;
+}
 
 
 /******************************************************************************
