@@ -159,6 +159,24 @@ auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool> {
 }
 
 /**
+ * Serializes the DNA strand into an output stream.
+ * Little-endian storage format is used.
+ */
+void dna::serialize(std::ostream& os) const {
+  binary_write(os, nucleotides.to_ullong());
+}
+
+/**
+ * Deserializes the DNA strand from an input stream.
+ * Little-endian storage format is used.
+ */
+auto dna::deserialize(std::istream& is) -> dna {
+  std::uint64_t value;
+  binary_read(is, value);
+  return dna{value};
+}
+
+/**
  *  Operator[] overload that redirects to return the nucleotide located at
  *  <index>, assuming that <index> is smaller than <length>.
  */

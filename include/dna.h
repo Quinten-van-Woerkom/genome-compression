@@ -24,7 +24,7 @@ enum class nac : char {
 
 // DNA strand of predetermined size
 class dna {
-  static constexpr std::size_t length = 7; // Length of a single strand
+  static constexpr std::size_t length = 16; // Length of a single strand
 public:
   dna(const std::string_view strand);
   dna(unsigned long long value) noexcept;
@@ -37,6 +37,8 @@ public:
   auto inverted() const noexcept -> dna { return transposed().mirrored(); }
   auto canonical() const noexcept -> std::tuple<dna, bool, bool>;
   auto to_ullong() const noexcept { return nucleotides.to_ullong(); }
+  void serialize(std::ostream& os) const;
+  static auto deserialize(std::istream& is) -> dna;
 
   auto operator[](std::size_t index) const -> char;
   auto code(std::size_t index) const -> nac;
