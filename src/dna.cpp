@@ -93,6 +93,9 @@ auto dna::random(unsigned seed) -> dna {
 
 /**
  * Returns a transposed version of the DNA strand.
+ * The DNA representation is exploited to allow simple nibble inversion to be
+ * equivalent to transposition. Rather unnecessary but measurements show it
+ * does affect performance.
  */
 auto dna::transposed() const noexcept -> dna {
   auto v = nucleotides.to_ullong();
