@@ -114,7 +114,7 @@ dna::dna(unsigned long long value) noexcept : nucleotides{value} {}
  */
 auto dna::random(unsigned seed) -> dna {
   std::srand(seed);
-  return dna{static_cast<unsigned long long>(rand())};
+  return dna{static_cast<unsigned long long>(rand() | ((std::uint64_t)rand() << 32))};
 }
 
 /**
