@@ -14,9 +14,6 @@
 #include "fasta_reader.h"
 #include "utility.h"
 
-using detail::node;
-using detail::pointer;
-
 #define TEST_START(name) \
     auto errors = 0;\
     auto expects = [&](bool test, auto... message) {\
@@ -51,7 +48,7 @@ auto test_dna() -> int {
 auto test_pointer() -> int {
   TEST_START("Tree pointer");
 
-  auto basis = detail::pointer{3280, false, false, false};
+  auto basis = pointer{3280, false, false, false};
   auto transposed = basis.transposed();
   auto mirrored = basis.mirrored();
 

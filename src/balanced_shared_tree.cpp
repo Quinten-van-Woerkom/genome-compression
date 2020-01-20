@@ -21,7 +21,7 @@
  * the given segment.
  */
 constexpr auto address_space(std::size_t segment) noexcept {
-  return 1ull << detail::pointer::address_bits[segment];
+  return 1ull << pointer::address_bits[segment];
 }
 
 /**
@@ -31,7 +31,7 @@ constexpr auto address_space(std::size_t segment) noexcept {
  * be set in this special case. This is the only case where a pointer is
  * invariant under transposition.
  */
-detail::pointer::pointer(const pointer& other, bool mirror_, bool transpose_)
+pointer::pointer(const pointer& other, bool mirror_, bool transpose_)
 : data{other.data},
   mirror{mirror_ != other.mirror && !other.invariant && other != nullptr},
   transpose{transpose_ != other.transpose && other != nullptr},
@@ -45,7 +45,7 @@ detail::pointer::pointer(const pointer& other, bool mirror_, bool transpose_)
  * Stores the index in (segment, offset) format, so that smaller indices can
  * be represented as shorter pointers.
  */
-detail::pointer::pointer(std::size_t index, bool mirror_, bool transpose_, bool invariant_)
+pointer::pointer(std::size_t index, bool mirror_, bool transpose_, bool invariant_)
 : data{index}, mirror{mirror_ && !invariant_}, transpose{transpose_}, segment{0}, invariant{invariant_} {
   while (data >= address_space(segment)) {
     ++segment;
@@ -62,17 +62,28 @@ detail::pointer::pointer(std::size_t index, bool mirror_, bool transpose_, bool 
  * Mirror and transpose are false for all null pointers and their
  * transformations.
  */
-detail::pointer::pointer(std::nullptr_t)
+pointer::pointer(std::nullptr_t)
 : mirror{false}, transpose{false}, segment{0b11}, invariant{false} {
   data ^= ~data;
   assert(!(mirror && invariant));
+}
+
+/**
+ * Returns the unsigned integer equivalent of the data stored in this
+ * pointer. Note that the invariance bit is neglected.
+ */
+auto pointer::to_ullong() const noexcept -> unsigned long long {
+  return data
+  | ((std::uint64_t)mirror << address_bits.back())
+  | ((std::uint64_t)transpose << (address_bits.back() + 1))
+  | ((std::uint64_t)segment << (address_bits.back() + 2));
 }
 
 
 /**
  * Interprets the data as an index pointing to an inner node.
  */
-auto detail::pointer::index() const noexcept -> std::size_t {
+auto pointer::index() const noexcept -> std::size_t {
   assert(!empty());
   auto offset = data;
   if (segment >= 0b11) offset += address_space(0b10);
@@ -87,7 +98,7 @@ auto detail::pointer::index() const noexcept -> std::size_t {
  * repeatedly stores the next most significant byte, until no more bytes
  * remain.
  */
-void detail::pointer::serialize(std::ostream& os) const {
+void pointer::serialize(std::ostream& os) const {
   int index = address_bits[segment]-4;
   std::uint8_t store = ((data >> index) & 0xf) | mirror << 4 | transpose << 5 | segment << 6;
   binary_write(os, store);
@@ -100,7 +111,7 @@ void detail::pointer::serialize(std::ostream& os) const {
 /**
  * Loads a pointer from an input stream.
  */
-auto detail::pointer::deserialize(std::istream& is) -> pointer {
+auto pointer::deserialize(std::istream& is) -> pointer {
   auto result = pointer{};
   std::uint8_t loaded;
   binary_read(is, loaded);
@@ -129,7 +140,7 @@ auto detail::pointer::deserialize(std::istream& is) -> pointer {
  * Two nodes compare equal when they can be transformed into one another
  * through any possible combination of similarity transforms.
  */
-bool detail::node::operator==(const node& other) const noexcept {
+bool node::operator==(const node& other) const noexcept {
   return children == other.children
   || mirrored().children == other.children
   || transposed().children == other.children
@@ -141,7 +152,7 @@ bool detail::node::operator==(const node& other) const noexcept {
  * node. First boolean corresponds to mirroring, second to transposition.
  * Precondition: other must be similar to this.
  */
-auto detail::node::transformations(const node& other) const noexcept -> std::pair<bool, bool> {
+auto node::transformations(const node& other) const noexcept -> std::pair<bool, bool> {
   if (children == other.children) return {false, false};
   if (mirrored().children == other.children) return {true, false};
   if (transposed().children == other.children) return {false, true};
@@ -152,7 +163,7 @@ auto detail::node::transformations(const node& other) const noexcept -> std::pai
  * Serializes the node to the given output stream.
  * First, the left pointer is stored, and then the right pointer.
  */
-void detail::node::serialize(std::ostream& os) const {
+void node::serialize(std::ostream& os) const {
   children[0].serialize(os);
   children[1].serialize(os);
 }
@@ -161,7 +172,7 @@ void detail::node::serialize(std::ostream& os) const {
  * Deserializes a node from an input stream.
  * The node is assumed to be stored in compressed format.
  */
-auto detail::node::deserialize(std::istream& is) -> node {
+auto node::deserialize(std::istream& is) -> node {
   auto left = pointer::deserialize(is);
   auto right = pointer::deserialize(is);
   return node{left, right};
@@ -455,7 +466,7 @@ void balanced_shared_tree::save(std::filesystem::path path) const {
  * class balanced_shared_tree::iterator:
  *  Iterator over the tree.
  */
-balanced_shared_tree::iterator::iterator(balanced_shared_tree& parent, std::size_t layer, detail::pointer root) : parent{parent} {
+balanced_shared_tree::iterator::iterator(balanced_shared_tree& parent, std::size_t layer, pointer root) : parent{parent} {
   if (root) {
     stack.emplace_back(layer, root);
     next_leaf();

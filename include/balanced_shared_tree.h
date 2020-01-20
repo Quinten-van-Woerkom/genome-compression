@@ -12,7 +12,6 @@
 #include <cstdint>
 #include <iostream>
 #include <filesystem>
-#include <utility>
 #include <vector>
 
 #include "robin_hood.h"
@@ -22,7 +21,6 @@
 #include "fasta_reader.h"
 #include "utility.h"
 
-namespace detail {
 /****************************************************************************
  * class pointer:
  *  Pointer type used inside the balanced shared tree. Stores not just an
@@ -44,6 +42,7 @@ public:
   bool operator==(const pointer& other) const noexcept { return to_ullong() == other.to_ullong(); }
   bool operator!=(const pointer& other) const noexcept { return to_ullong() != other.to_ullong(); }
   operator bool() const noexcept { return *this != nullptr; }
+  auto to_ullong() const noexcept -> unsigned long long;
 
   bool empty() const noexcept { return *this == nullptr; }
   auto canonical() const noexcept { return data | ((std::uint64_t)segment << (address_bits.back() + 2)); }
@@ -63,17 +62,6 @@ public:
   auto transposed() const noexcept { return pointer{*this, false, true}; }
   auto inverted() const noexcept { return invariant ? transposed() : pointer{*this, true, true}; }
 
-  /**
-   * Returns the unsigned integer equivalent of the data stored in this
-   * pointer. Note that the invariance bit is neglected.
-   */
-  auto to_ullong() const noexcept -> unsigned long long {
-    return data
-    | ((std::uint64_t)mirror << address_bits.back())
-    | ((std::uint64_t)transpose << (address_bits.back() + 1))
-    | ((std::uint64_t)segment << (address_bits.back() + 2));
-  }
-
 private:
   std::uint64_t data : address_bits.back();
   bool mirror : 1;
@@ -82,7 +70,7 @@ private:
   bool invariant : 1; // Only used in construction, not actually stored to disk
 };
 
-inline auto& operator<<(std::ostream& os, const detail::pointer& pointer) {
+inline auto& operator<<(std::ostream& os, const pointer& pointer) {
   if (pointer.empty()) return os << "empty";
   else return os << '(' << pointer.index() << ": " << pointer.is_mirrored()
     << pointer.is_transposed() << pointer.is_invariant() << ')';
@@ -116,9 +104,8 @@ private:
   std::array<pointer, 2> children;
 };
 
-inline auto& operator<<(std::ostream& os, const detail::node& node) {
+inline auto& operator<<(std::ostream& os, const node& node) {
   return os << "node<" << node.left() << ", " << node.right() << ">";
-}
 }
 
 
@@ -127,8 +114,8 @@ inline auto& operator<<(std::ostream& os, const detail::node& node) {
  *  Required for usage of nodes in a hashtable.
  */
 namespace std {
-  template<> struct hash<detail::node> {
-    auto operator()(const detail::node& n) const noexcept -> std::size_t {
+  template<> struct hash<node> {
+    auto operator()(const node& n) const noexcept -> std::size_t {
       const auto left = n.left().canonical();
       const auto right = n.right().canonical();
       const auto transposed = n.left().is_transposed() ^ n.right().is_transposed();
@@ -147,8 +134,8 @@ namespace std {
  */
 class balanced_shared_tree {
 public:
-  using pointer = detail::pointer;
-  using node = detail::node;
+  using pointer = pointer;
+  using node = node;
 
   balanced_shared_tree() = default;
 

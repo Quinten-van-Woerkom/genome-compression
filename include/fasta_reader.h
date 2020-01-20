@@ -6,10 +6,8 @@
 
 #pragma once
 
-#include <cassert>
 #include <fstream>
 #include <filesystem>
-#include <iomanip>
 #include <iostream>
 #include <string_view>
 #include <thread>
@@ -69,4 +67,4 @@ private:
   std::thread background_loader;
 };
 
-auto read_genome(const fs::path path) -> std::vector<dna>;
+auto read_genome(const std::filesystem::path path) -> std::vector<dna>;

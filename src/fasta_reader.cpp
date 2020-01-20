@@ -6,13 +6,10 @@
 
 #include "fasta_reader.h"
 
-#include <cctype>
 #include <iostream>
 #include <limits>
 
-namespace fs = std::filesystem;
-
-fasta_reader::fasta_reader(fs::path path, std::size_t buffer_size)
+fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
   : file{path}, path{path}, index{0} {
   if (!file.is_open()) {
     std::cerr << "Unable to open file, aborting...\n";
@@ -78,8 +75,8 @@ auto fasta_reader::size() -> std::size_t {
   return std::filesystem::file_size(path);
 }
 
-auto read_genome(const fs::path path) -> std::vector<dna> {
-  if (!fs::is_regular_file(path)) {
+auto read_genome(const std::filesystem::path path) -> std::vector<dna> {
+  if (!std::filesystem::is_regular_file(path)) {
     std::cerr << "Non-existent path, aborting...\n";
     exit(1);
   }

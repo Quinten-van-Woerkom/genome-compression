@@ -5,24 +5,13 @@
 
 #pragma once
 
-#include <array>
-#include <bitset>
-#include <filesystem>
-#include <fstream>
 #include <iostream>
 #include <random>
 #include <string_view>
 #include <tuple>
-#include <vector>
 
 #include "robin_hood.h"
 
-namespace fs = std::filesystem;
-
-// Supported nucleic acid codes
-// enum class nac : char {
-//   A = 0b00, C = 0b01, G = 0b10, T = 0b11, R, Y, K, M, S, W, B, D, H, V, N, Indeterminate
-// };
 enum class nac : char {
   // Pairs of transpose base pairs
   A = 0b0001, T = 0b1000,
