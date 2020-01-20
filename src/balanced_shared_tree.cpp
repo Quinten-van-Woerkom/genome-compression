@@ -280,7 +280,7 @@ void balanced_shared_tree::emplace_node(std::size_t layer, node node) {
  * Creates and stores a histogram for each layer in the tree, storing them as
  * lines in a .csv file.
  */
-void balanced_shared_tree::histogram(std::filesystem::path path) const {
+void balanced_shared_tree::store_histogram(std::filesystem::path path) const {
   auto file = std::ofstream{path};
   for (auto layer = 1u; layer < nodes.size(); ++layer) {
     auto frequencies = std::vector<unsigned long long>(nodes[layer-1].size(), 0);
