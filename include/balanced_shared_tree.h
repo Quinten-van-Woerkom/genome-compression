@@ -171,8 +171,6 @@ public:
   void emplace_leaf(dna leaf);
 
   void histogram(std::filesystem::path) const;
-  void print_unique(std::ostream& os) const;
-
   auto bytes() const noexcept -> std::size_t;
   void serialize(std::ostream& os) const;
   static auto deserialize(std::istream& is) -> balanced_shared_tree;

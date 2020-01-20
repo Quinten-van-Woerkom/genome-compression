@@ -296,29 +296,6 @@ void balanced_shared_tree::histogram(std::filesystem::path path) const {
 }
 
 /**
- * Prints all layers to the output stream, in order from the root to the
- * leaves.
- */
-void balanced_shared_tree::print_unique(std::ostream& os) const {
-  os << "Root (" << nodes.back().size() << "): ";
-  for (auto node : nodes.back()) os << node << ", ";
-  os << '\n';
-
-  for (int i = nodes.size()-2; i >= 0; --i) {
-    os << "Layer " << i << " (" << nodes[i].size() << "): ";
-    for (auto node : nodes[i]) {
-      os << node << " (" << std::hash<detail::node>()(node) << "), ";
-    }
-    os << '\n';
-  }
-
-  os << "Leaves (" << leaves.size() << "): ";
-  for (auto leaf : leaves)
-    os << leaf << " (" << std::hash<dna>()(leaf) << "), ";
-  os << '\n';
-}
-
-/**
  * Computes the number of bytes required to store the compressed tree.
  */
 auto balanced_shared_tree::bytes() const noexcept -> std::size_t {
