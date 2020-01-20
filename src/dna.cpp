@@ -98,7 +98,7 @@ auto dna::random(unsigned seed) -> dna {
  * does affect performance.
  */
 auto dna::transposed() const noexcept -> dna {
-  auto v = nucleotides.to_ullong();
+  auto v = nucleotides;
   // swap odd and even bits
   v = ((v >> 1) & 0x5555555555555555) | ((v & 0x5555555555555555) << 1);
   // swap consecutive pairs
@@ -110,7 +110,7 @@ auto dna::transposed() const noexcept -> dna {
  * Returns a mirrored version of the DNA strand.
  */
 auto dna::mirrored() const noexcept -> dna {
-  auto v = nucleotides.to_ullong();
+  auto v = nucleotides;
   if constexpr (length >= 2)  // swap nibbles
     v = ((v >> 4) & 0x0F0F0F0F0F0F0F0F) | ((v & 0x0F0F0F0F0F0F0F0F) << 4);
   if constexpr (length >= 4) // swap bytes
@@ -149,7 +149,7 @@ auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool, bool> {
  * Big-endian storage format is used.
  */
 void dna::serialize(std::ostream& os) const {
-  binary_write(os, nucleotides.to_ullong());
+  binary_write(os, nucleotides);
 }
 
 /**
@@ -163,20 +163,14 @@ auto dna::deserialize(std::istream& is) -> dna {
 }
 
 /**
- *  Operator[] overload that redirects to return the nucleotide located at
- *  <index>, assuming that <index> is smaller than <length>.
- */
-auto dna::operator[](std::size_t index) const -> char {
-  return this->nucleotide(index);
-}
-
-/**
  * Returns the nucleic acid code of the nucleotide located at <index>
  * Requires that <index> is smaller than <length>.
  */
 auto dna::code(std::size_t index) const -> nac {
   assert(index < length);
-  return static_cast<nac>(from_bits(nucleotides[4*index], nucleotides[4*index+1], nucleotides[4*index+2], nucleotides[4*index+3]));
+  // return static_cast<nac>(from_bits(nucleotides[4*index], nucleotides[4*index+1], nucleotides[4*index+2], nucleotides[4*index+3]));
+  const auto offset = 4*index;
+  return static_cast<nac>((nucleotides >> offset) & 0xf);
 }
 
 /**
@@ -200,11 +194,14 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
 
 void dna::set_nucleotide(std::size_t index, nac code) {
   assert(index < length);
-  auto bits = to_bits(static_cast<unsigned char>(code));
-  nucleotides.set(4*index, std::get<0>(bits));
-  nucleotides.set(4*index+1, std::get<1>(bits));
-  nucleotides.set(4*index+2, std::get<2>(bits));
-  nucleotides.set(4*index+3, std::get<3>(bits));
+  // auto bits = to_bits(static_cast<unsigned char>(code));
+  // nucleotides.set(4*index, std::get<0>(bits));
+  // nucleotides.set(4*index+1, std::get<1>(bits));
+  // nucleotides.set(4*index+2, std::get<2>(bits));
+  // nucleotides.set(4*index+3, std::get<3>(bits));
+  const auto offset = 4*index;
+  nucleotides &= ~(0xfull << offset);
+  nucleotides |= static_cast<std::uint64_t>(code) << offset;
 }
 
 /**

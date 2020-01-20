@@ -53,25 +53,24 @@ public:
   auto inverted() const noexcept -> dna { return transposed().mirrored(); }
   auto invariant() const noexcept -> bool { return *this == mirrored(); }
   auto canonical() const noexcept -> std::tuple<dna, bool, bool, bool>;
-  auto to_ullong() const noexcept { return nucleotides.to_ullong(); }
   void serialize(std::ostream& os) const;
   static auto deserialize(std::istream& is) -> dna;
 
-  auto operator[](std::size_t index) const -> char;
   auto code(std::size_t index) const -> nac;
   auto nucleotide(std::size_t index) const -> char;
-  auto hash() const noexcept { return robin_hood::hash<decltype(nucleotides)>()(nucleotides); }
   
   auto operator==(const dna& other) const noexcept -> bool { return nucleotides == other.nucleotides; }
   auto operator!=(const dna& other) const noexcept -> bool { return nucleotides != other.nucleotides; }
-  auto operator<(const dna& other) const noexcept -> bool { return nucleotides.to_ullong() < other.nucleotides.to_ullong(); }
-  operator std::uint64_t() const noexcept { return nucleotides.to_ullong(); }
+  auto operator<(const dna& other) const noexcept -> bool { return nucleotides < other.nucleotides; }
+
+  operator std::uint64_t() const noexcept { return nucleotides; }
+  auto to_ullong() const noexcept { return nucleotides; }
 
 private:
   void set_nucleotide(std::size_t index, char nucleotide);
   void set_nucleotide(std::size_t index, nac code);
 
-  std::bitset<4*length> nucleotides;
+  std::uint64_t nucleotides : 4*length;
 };
 
 auto operator<<(std::ostream& os, const dna& dna) -> std::ostream&;
@@ -80,7 +79,7 @@ namespace std {
   template<>
   struct hash<dna> {
     auto operator()(const dna& n) const noexcept -> std::size_t {
-      return n.hash();
+      return std::hash<std::uint64_t>()(n.to_ullong());
     }
   };
 }
