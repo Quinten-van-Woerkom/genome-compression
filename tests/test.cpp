@@ -189,10 +189,24 @@ auto test_similarity_transforms() -> int {
   }
 
   {
-    auto a = dna{"AAAAAAAAAAAA"};
-    auto b = dna{"ACTGACTGACTG"};
+    auto string1 = std::string_view{"AAAAAAAAAAAAAAAA"}.substr(0, dna::size());
+    auto string2 = std::string_view{"ACTGACTGATGCCCAC"}.substr(0, dna::size());
+    auto a = dna{string1};
+    auto b = dna{string2};
     auto c = b.mirrored();
     auto data = std::vector{a, b, c, a};
+    auto tree = balanced_shared_tree{data};
+
+    expects(tree.node_count() == 2, "Leaves that are invariant under transformation should be considered as such when merging:\n", tree);
+  }
+
+  {
+    auto string1 = std::string_view{"AAAAAAAAAAAAAAAA"}.substr(0, dna::size());
+    auto string2 = std::string_view{"ACTGACTGATGCCCAC"}.substr(0, dna::size());
+    auto a = dna{string1};
+    auto b = dna{string2};
+    auto c = b.mirrored();
+    auto data = std::vector{b, a, a, c};
     auto tree = balanced_shared_tree{data};
 
     expects(tree.node_count() == 2, "Leaves that are invariant under transformation should be considered as such when merging:\n", tree);

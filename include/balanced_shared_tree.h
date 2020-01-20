@@ -134,7 +134,6 @@ namespace std {
       const auto transposed = n.left().is_transposed() ^ n.right().is_transposed();
       const auto mirrored = (n.left().is_mirrored() ^ n.right().is_mirrored());
       const auto invariant = (n.left().is_invariant() || n.right().is_invariant()) || (n.left().mirrored() == n.right());
-      // std::cout << n << ": " << left << ',' << right << ',' << transposed << ',' << (mirrored || invariant) << '\n';
       if (left < right) return detail::hash(1, transposed, mirrored || invariant, left, right);
       else return detail::hash(invariant, transposed, mirrored || invariant, right, left);
     }

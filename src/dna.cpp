@@ -226,9 +226,9 @@ void dna::set_nucleotide(std::size_t index, nac code) {
 /**
  *  Output stream operator that prints the nucleotides.
  */
-auto operator<<(std::ostream& os, const dna& dna) -> std::ostream& {
-  for (auto i = 0u; i < dna.size(); ++i)
-    os << dna.nucleotide(i);
-  os << " (" << dna.invariant() << ')';
+auto operator<<(std::ostream& os, const dna& strand) -> std::ostream& {
+  for (auto i = 0u; i < strand.size(); ++i)
+    os << strand.nucleotide(i);
+  os << " (" << strand.invariant() << ", " << std::hash<dna>()(strand) << ')';
   return os;
 }

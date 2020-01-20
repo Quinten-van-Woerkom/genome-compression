@@ -26,7 +26,7 @@ enum class nac : char {
 
 // DNA strand of predetermined size
 class dna {
-  static constexpr std::size_t length = 12; // Length of a single strand
+  static constexpr std::size_t length = 8; // Length of a single strand
 public:
   dna() = default;
   dna(const std::string_view strand);

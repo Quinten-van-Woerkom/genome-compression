@@ -263,8 +263,13 @@ auto balanced_shared_tree::operator[](std::uint64_t index) const -> dna {
 
   const auto left = node.left();
   const auto right = node.right();
-  if (index < !left.empty()) return access_leaf({left, mirror, transpose});
-  else return access_leaf({right, mirror, transpose});
+  if (!mirror) {
+    if (index < !left.empty()) return access_leaf({left, mirror, transpose});
+    else return access_leaf({right, mirror, transpose});
+  } else {
+    if (index < !right.empty()) return access_leaf({right, mirror, transpose});
+    else return access_leaf({left, mirror, transpose});
+  }
 }
 
 /**
