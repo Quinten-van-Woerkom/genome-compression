@@ -60,7 +60,7 @@ void fasta_reader::load_buffer() {
       position += size;
       
       if (file.eof()) {
-        background_buffer.resize(position - position%dna::size());
+        background_buffer.resize(position+1 - (position+1)%dna::size());
         return;
       }
     }
