@@ -15,17 +15,20 @@
 #include <tuple>
 #include <vector>
 
+#include "robin_hood.h"
+
 namespace fs = std::filesystem;
 
 // Supported nucleic acid codes
 enum class nac : char {
-  A = 0, C, G, T, R, Y, K, M, S, W, B, D, H, V, N, Indeterminate
+  A = 0b00, C = 0b01, G = 0b10, T = 0b11, R, Y, K, M, S, W, B, D, H, V, N, Indeterminate
 };
 
 // DNA strand of predetermined size
 class dna {
-  static constexpr std::size_t length = 16; // Length of a single strand
+  static constexpr std::size_t length = 12; // Length of a single strand
 public:
+  dna() = default;
   dna(const std::string_view strand);
   dna(unsigned long long value) noexcept;
 
@@ -43,6 +46,7 @@ public:
   auto operator[](std::size_t index) const -> char;
   auto code(std::size_t index) const -> nac;
   auto nucleotide(std::size_t index) const -> char;
+  auto hash() const noexcept { return robin_hood::hash<decltype(nucleotides)>()(nucleotides); }
   
   auto operator==(const dna& other) const noexcept -> bool { return nucleotides == other.nucleotides; }
   auto operator!=(const dna& other) const noexcept -> bool { return nucleotides != other.nucleotides; }
@@ -62,7 +66,7 @@ namespace std {
   template<>
   struct hash<dna> {
     auto operator()(const dna& n) const noexcept -> std::size_t {
-      return std::hash<unsigned long long>{}(n.to_ullong());
+      return n.hash();
     }
   };
 }

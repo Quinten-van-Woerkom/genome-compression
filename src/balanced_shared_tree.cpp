@@ -6,6 +6,7 @@
  */
 
 #include <limits>
+#include <numeric>
 
 #include "balanced_shared_tree.h"
 
@@ -277,26 +278,100 @@ void balanced_shared_tree::emplace_node(std::size_t layer, node node) {
 }
 
 /**
+ * Computes the number of times each pointer occurs in the nodes contained in
+ * layer <layer>.
+ * Precondition: <layer> is bigger than or equal to 0
+ * Precondition: <layer> is smaller than the number of layers
+ */
+auto balanced_shared_tree::histogram(std::size_t layer) const -> std::vector<std::size_t> {
+  assert(layer < nodes.size());
+  const auto layer_size = (layer == 0) ? leaves.size() : nodes[layer-1].size();
+  auto result = std::vector<std::size_t>(layer_size, 0);
+
+  for (const auto& node : nodes[layer]) {
+    if (auto left = node.left(); left) ++result[left.index()];
+    if (auto right = node.right(); right) ++result[right.index()];
+  }
+  return result;
+}
+
+/**
  * Creates and stores a histogram for each layer in the tree, storing them as
  * lines in a .csv file.
  */
 void balanced_shared_tree::store_histogram(std::filesystem::path path) const {
   auto file = std::ofstream{path};
-  for (auto layer = 1u; layer < nodes.size(); ++layer) {
-    auto frequencies = std::vector<unsigned long long>(nodes[layer-1].size(), 0);
-
-    for (const auto& node : nodes[layer]) {
-      if (!node.left().empty())
-        ++frequencies[node.left().index()];
-      if (!node.right().empty())
-        ++frequencies[node.right().index()];
-    }
-
+  for (auto layer = 0u; layer < nodes.size(); ++layer) {
+    auto frequencies = histogram(layer);
     std::sort(frequencies.begin(), frequencies.end(), std::greater<>());
 
-    for (const auto& frequency : frequencies)
-      file << frequency << ',';
+    for (auto chunk : chunks(frequencies, 1000)) {
+      for (const auto& frequency : chunk)
+        file << frequency << ',';
+      file << '\n';
+    }
     file << '\n';
+  }
+}
+
+/**
+ * Sorts the pointers in each layer based on their relative reference count, to
+ * reduce the pointers size required to refer to the most-referenced bits.
+ * This further improves the effectiveness of pointer compression.
+ */
+void balanced_shared_tree::frequency_sort() {
+  { // Leaf nodes are treated separately
+    auto frequencies = histogram(0);
+    auto old_indices = std::vector<std::size_t>(frequencies.size());
+    std::iota(old_indices.begin(), old_indices.end(), 0);
+
+    std::stable_sort(old_indices.begin(), old_indices.end(),
+      [&](auto a, auto b) { return frequencies[a] > frequencies[b]; });
+
+    auto new_leaves = std::vector<dna>(leaves.size());
+    auto new_indices = std::vector<std::size_t>(old_indices.size());
+
+    for (auto i = 0u; i < old_indices.size(); ++i)
+      new_indices[old_indices[i]] = i;
+
+    for (auto i = 0u; i < old_indices.size(); ++i)
+      new_leaves[new_indices[i]] = leaves[i];
+    leaves = std::move(new_leaves);
+
+    auto update = [&](auto old) {
+      if (old.empty()) return old;
+      else return pointer{new_indices[old.index()], old.is_mirrored(), old.is_transposed()};
+    };
+
+    std::transform(nodes[0].begin(), nodes[0].end(), nodes[0].begin(),
+      [&](auto old) { return node{update(old.left()), update(old.right())}; });
+  }
+
+  for (auto layer = 1u; layer < nodes.size(); ++layer) {
+    auto frequencies = histogram(layer);
+    auto old_indices = std::vector<std::size_t>(frequencies.size());
+    std::iota(old_indices.begin(), old_indices.end(), 0);
+    
+    std::stable_sort(old_indices.begin(), old_indices.end(),
+      [&](auto a, auto b) { return frequencies[a] > frequencies[b]; });
+    
+    auto new_nodes = nodes[layer-1];
+    auto new_indices = old_indices;
+
+    for (auto i = 0u; i < old_indices.size(); ++i)
+      new_indices[old_indices[i]] = i;
+
+    for (auto i = 0u; i < new_indices.size(); ++i)
+      new_nodes[new_indices[i]] = nodes[layer-1][i];
+    nodes[layer-1] = std::move(new_nodes);
+
+    auto update = [&](auto old) {
+      if (old.empty()) return old;
+      else return pointer{new_indices[old.index()], old.is_mirrored(), old.is_transposed()};
+    };
+
+    std::transform(nodes[layer].begin(), nodes[layer].end(), nodes[layer].begin(),
+      [&](auto old) { return node{update(old.left()), update(old.right())}; });
   }
 }
 
@@ -304,7 +379,8 @@ void balanced_shared_tree::store_histogram(std::filesystem::path path) const {
  * Computes the number of bytes required to store the compressed tree.
  */
 auto balanced_shared_tree::bytes() const noexcept -> std::size_t {
-  auto memory = root.bytes();
+  auto memory = root.bytes() + 8 + leaves.size()*sizeof(dna);
+
   for (const auto& layer : nodes) {
     memory += 8;  // Size of each layer is stored as 64 bits
     for (const auto& node : layer) memory += node.bytes();
@@ -352,6 +428,14 @@ auto balanced_shared_tree::deserialize(std::istream& is) -> balanced_shared_tree
       result.nodes.back().emplace_back(node::deserialize(is));
   }
   return result;
+}
+
+/**
+ * Saves a balanced tree to a file in DAG format.
+ */
+void balanced_shared_tree::save(std::filesystem::path path) const {
+  auto file = std::ofstream{path};
+  serialize(file);
 }
 
 

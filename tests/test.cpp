@@ -258,6 +258,33 @@ auto test_serialization() -> int {
   TEST_END("Serialization");
 }
 
+auto test_frequency_sort() -> int {
+  TEST_START("Frequency sort");
+
+  auto a = dna::random(1);
+  auto b = dna::random(2);
+  auto c = dna::random(3);
+  auto data = std::vector{b, b, b, a, c, b, a, c, b, a, b, a, c, a, c, a, c, a, b, c, a, a, a, a, a, a, a, a, a, a, a, a, a, a};
+
+  auto compressed = balanced_shared_tree{data};
+  auto old = compressed;
+  compressed.frequency_sort();
+
+  auto i = 0;
+  auto size = old.width();
+  for (const auto c : compressed) {
+    expects(
+      old[i] == c,
+      "old[i] != compressed[i] for i = ", i, " out of ", size, '\n',
+      "\told[i]\t\t= ", old[i], '\n',
+      "\tcompressed[i]\t= ", c
+    );
+    ++i;
+  }
+
+  TEST_END("Frequency sort");
+}
+
 auto test_tree_iteration() -> int {
   TEST_START("Tree iteration");
 
@@ -291,7 +318,10 @@ auto test_tree_iteration() -> int {
 }
 
 int main(int argc, char* argv[]) {
-  auto errors = test_pointer() + test_chunks() + test_file_reader() + test_tree_factory() + test_similarity_transforms() + test_tree_transposition() + test_serialization() + test_tree_iteration();
+  auto errors = test_pointer() + test_chunks() + test_file_reader()
+    + test_tree_factory() + test_similarity_transforms()
+    + test_tree_transposition() + test_frequency_sort() + test_serialization()
+    + test_tree_iteration();
   if (errors) std::cerr << "Not all tests passed\n";
   return errors;
 }

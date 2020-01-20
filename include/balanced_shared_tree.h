@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "robin_hood.h"
+#include "parallel_hashmap/phmap.h"
 
 #include "dna.h"
 #include "fasta_reader.h"
@@ -170,10 +171,14 @@ public:
   void emplace_node(std::size_t layer, node node);
   void emplace_leaf(dna leaf);
 
+  auto histogram(std::size_t layer) const -> std::vector<std::size_t>;
   void store_histogram(std::filesystem::path) const;
+  void frequency_sort();
+
   auto bytes() const noexcept -> std::size_t;
   void serialize(std::ostream& os) const;
   static auto deserialize(std::istream& is) -> balanced_shared_tree;
+  void save(std::filesystem::path) const;
 
   struct iterator {
     using pointer = balanced_shared_tree::pointer;
@@ -220,8 +225,10 @@ public:
   using pointer = balanced_shared_tree::pointer;
   using node = balanced_shared_tree::node;
 
+  // template<typename T>
+  // using hash_map = robin_hood::unordered_flat_map<T, std::size_t>;
   template<typename T>
-  using hash_map = robin_hood::unordered_flat_map<T, std::size_t>;
+  using hash_map = phmap::parallel_flat_hash_map<T, std::size_t>;
 
   tree_constructor(balanced_shared_tree& parent);
 
@@ -263,9 +270,10 @@ auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer
     nodes.emplace_back();
   }
 
+  auto count = 0;
   foreach_pair(iterable,
-    [&](auto left, auto right) { layer.emplace_back(emplace_leaves(left, right)); },
-    [&](auto last) { layer.emplace_back(emplace_leaves(last)); }
+    [&](auto left, auto right) { count += 2; layer.emplace_back(emplace_leaves(left, right)); },
+    [&](auto last) { count += 1; layer.emplace_back(emplace_leaves(last)); }
   );
   return layer;
 }
@@ -282,10 +290,6 @@ auto tree_constructor::reduce_segment(Iterable&& segment) -> pointer {
   for (; layer.size() > 1 || index < nodes.size(); ++index)
     layer = reduce_nodes(layer, index);
 
-  // Then check if any other, bigger, subtrees were already made and match them
-  // in depth.
-  for (; index < nodes.size(); ++index)
-    layer = reduce_nodes(layer, index);
   return layer.front();
 }
 

@@ -13,8 +13,8 @@
 #include "fasta_reader.h"
 
 int main(int argc, char* argv[]) {
-  std::string path = "data/chmpxx";
-  std::string histogram;
+  std::filesystem::path path = "data/chmpxx";
+  std::filesystem::path histogram;
   if (argc > 1) path = argv[1];
   if (argc > 2) histogram = argv[2];
 
@@ -32,6 +32,9 @@ int main(int argc, char* argv[]) {
 
   std::cout << "Done!\n" << std::flush;
 
+  std::cout << "Sorting pointers based on frequency\n";
+  compressed.frequency_sort();
+
   auto compressed_size = compressed.bytes();
   auto compressed_width = compressed.width();
   auto file_size = std::filesystem::file_size(path);
@@ -40,11 +43,15 @@ int main(int argc, char* argv[]) {
     std::cout << "Stored node reference histogram at " << histogram << '\n';
   }
 
+  path.replace_extension(".dag");
+  compressed.save(path);
+  std::cout << "Stored compressed sequence at " << path << '\n';
+
   std::cout
     << "Number of data units: " << compressed_width << '\n'
     << "Number of base pairs: " << compressed_width*dna::size() << '\n'
     << "File size: " << file_size << " bytes\n"
-    << "Compressed size: " << compressed_size << " bytes (" << compressed.node_count() << " nodes)\n"
+    << "Compressed size: " << compressed_size << " bytes (" << compressed.node_count() << " nodes, " << compressed.leaf_count() << " leaves)\n"
     << "Compression ratio: " << double(compressed_size)/double(file_size) << '\n'
     << "Time: " << time.count() << "ms\n";
 
