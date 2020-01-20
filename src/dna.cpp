@@ -72,31 +72,6 @@ constexpr auto from_nac(nac code) noexcept -> char {
   }
 }
 
-constexpr auto transpose(nac code) noexcept -> nac {
-  switch (code) {
-    case nac::A: return nac::T;
-    case nac::T: return nac::A;
-    case nac::C: return nac::G;
-    case nac::G: return nac::C;
-    case nac::R: return nac::Y;
-    case nac::Y: return nac::R;
-    case nac::K: return nac::M;
-    case nac::M: return nac::K;
-    case nac::S: return nac::S;
-    case nac::W: return nac::W;
-    case nac::B: return nac::V;
-    case nac::V: return nac::B;
-    case nac::D: return nac::H;
-    case nac::H: return nac::D;
-    case nac::N: return nac::N;
-    case nac::Indeterminate: return nac::Indeterminate;
-    default: {
-      std::cerr << "Trying to transpose an unknown nucleic acid code\n";
-      exit(1);
-    }
-  }
-}
-
 /**
  * Constructors.
  */
