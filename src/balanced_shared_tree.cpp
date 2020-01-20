@@ -222,6 +222,11 @@ auto balanced_shared_tree::children(std::size_t layer, pointer pointer) const ->
   else return children(layer-1, left) + children(layer-1, right); 
 }
 
+/**
+ * Indexing operator into the tree.
+ * It is advised not to use this for iteration, as the induces overhead
+ * compared to the implemented iterator is significant.
+ */
 auto balanced_shared_tree::operator[](std::uint64_t index) const -> dna {
   auto current = root;
 
