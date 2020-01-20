@@ -36,7 +36,7 @@ int main(int argc, char* argv[]) {
   auto compressed_width = compressed.width();
   auto file_size = std::filesystem::file_size(path);
   if (!histogram.empty()) {
-    compressed.histogram(histogram);
+    compressed.store_histogram(histogram);
     std::cout << "Stored node reference histogram at " << histogram << '\n';
   }
 

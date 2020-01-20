@@ -170,7 +170,7 @@ public:
   void emplace_node(std::size_t layer, node node);
   void emplace_leaf(dna leaf);
 
-  void histogram(std::filesystem::path) const;
+  void store_histogram(std::filesystem::path) const;
   auto bytes() const noexcept -> std::size_t;
   void serialize(std::ostream& os) const;
   static auto deserialize(std::istream& is) -> balanced_shared_tree;
