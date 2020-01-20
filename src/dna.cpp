@@ -47,7 +47,7 @@ auto to_nac(char nucleotide) -> nac {
   }
 }
 
-constexpr auto from_nac(nac code) noexcept -> char {
+constexpr auto from_nac(nac code) -> char {
   switch (code) {
     case nac::A: return 'A';
     case nac::C: return 'C';
@@ -139,9 +139,9 @@ auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool, bool> {
   const auto current = std::tuple{*this, false, false, is_invariant};
   const auto transpose = std::tuple{transposed(), false, true, is_invariant};
   const auto mirror = std::tuple{mirrored(), true, false, is_invariant};
-  const auto both = std::tuple{transposed().mirrored(), true, true, is_invariant};
+  const auto invert = std::tuple{inverted(), true, true, is_invariant};
 
-  return variadic_min(current, transpose, mirror, both);
+  return variadic_min(current, transpose, mirror, invert);
 }
 
 /**
@@ -168,7 +168,6 @@ auto dna::deserialize(std::istream& is) -> dna {
  */
 auto dna::code(std::size_t index) const -> nac {
   assert(index < length);
-  // return static_cast<nac>(from_bits(nucleotides[4*index], nucleotides[4*index+1], nucleotides[4*index+2], nucleotides[4*index+3]));
   const auto offset = 4*index;
   return static_cast<nac>((nucleotides >> offset) & 0xf);
 }
@@ -194,11 +193,6 @@ void dna::set_nucleotide(std::size_t index, char nucleotide) {
 
 void dna::set_nucleotide(std::size_t index, nac code) {
   assert(index < length);
-  // auto bits = to_bits(static_cast<unsigned char>(code));
-  // nucleotides.set(4*index, std::get<0>(bits));
-  // nucleotides.set(4*index+1, std::get<1>(bits));
-  // nucleotides.set(4*index+2, std::get<2>(bits));
-  // nucleotides.set(4*index+3, std::get<3>(bits));
   const auto offset = 4*index;
   nucleotides &= ~(0xfull << offset);
   nucleotides |= static_cast<std::uint64_t>(code) << offset;
