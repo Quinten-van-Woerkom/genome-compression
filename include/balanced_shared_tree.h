@@ -65,7 +65,7 @@ public:
 
   /**
    * Returns the unsigned integer equivalent of the data stored in this
-   * pointer.
+   * pointer. Note that the invariance bit is neglected.
    */
   auto to_ullong() const noexcept -> unsigned long long {
     return data
