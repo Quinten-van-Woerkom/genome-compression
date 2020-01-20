@@ -33,6 +33,20 @@ using detail::pointer;
     else std::cerr << "<" << name << "> Finished, but not all tests passed\n"; \
     return errors;
 
+auto test_dna() -> int {
+  TEST_START("DNA");
+
+  auto a = dna{std::string_view{"AAAAAAAAAAAAAAAA"}.substr(0, dna::size())};
+  auto t = dna{std::string_view{"TTTTTTTTTTTTTTTT"}.substr(0, dna::size())};
+  auto p = dna{std::string_view{"ACTGACTGACTGACTG"}.substr(0, dna::size())};
+  auto q = dna{std::string_view{"GTCAGTCAGTCAGTCA"}.substr(0, dna::size())};
+
+  expects(a.transposed() == t, "A should complement T: ", a.transposed(), " != ", t);
+  expects(p.mirrored() == q, "Mirroring DNA strings should be exactly reversed: ", p.mirrored(), " != ", q);
+
+  TEST_END("DNA");
+}
+
 auto test_pointer() -> int {
   TEST_START("Tree pointer");
 
@@ -353,8 +367,8 @@ auto test_tree_iteration() -> int {
 }
 
 int main(int argc, char* argv[]) {
-  auto errors = test_pointer() + test_chunks() + test_file_reader()
-    + test_tree_factory() + test_similarity_transforms()
+  auto errors = test_dna() + test_pointer() + test_chunks()
+    + test_file_reader() + test_tree_factory() + test_similarity_transforms()
     + test_tree_transposition() + test_frequency_sort() + test_serialization()
     + test_tree_iteration();
   if (errors) std::cerr << "Not all tests passed\n";

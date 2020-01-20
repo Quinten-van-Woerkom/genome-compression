@@ -120,20 +120,28 @@ auto dna::random(unsigned seed) -> dna {
  * Returns a transposed version of the DNA strand.
  */
 auto dna::transposed() const noexcept -> dna {
-  auto result = *this;
-  for (auto i = 0u; i < dna::size(); ++i)
-    result.set_nucleotide(i, transpose(code(i)));
-  return result;
+  auto v = nucleotides.to_ullong();
+  // swap odd and even bits
+  v = ((v >> 1) & 0x5555555555555555) | ((v & 0x5555555555555555) << 1);
+  // swap consecutive pairs
+  v = ((v >> 2) & 0x3333333333333333) | ((v & 0x3333333333333333) << 2);
+  return dna{v};
 }
 
 /**
  * Returns a mirrored version of the DNA strand.
  */
 auto dna::mirrored() const noexcept -> dna {
-  auto result = *this;
-  for (auto i = 0u; i < dna::size(); ++i)
-    result.set_nucleotide(i, code(dna::size() - i - 1));
-  return result;
+  auto v = nucleotides.to_ullong();
+  if constexpr (length >= 2)  // swap nibbles
+    v = ((v >> 4) & 0x0F0F0F0F0F0F0F0F) | ((v & 0x0F0F0F0F0F0F0F0F) << 4);
+  if constexpr (length >= 4) // swap bytes
+    v = ((v >> 8) & 0x00FF00FF00FF00FF) | ((v & 0x00FF00FF00FF00FF) << 8);
+  if constexpr (length >= 8) // swap 2-byte long pairs
+    v = ((v >> 16) & 0x0000FFFF0000FFFF) | ((v & 0x0000FFFF0000FFFF) << 16);
+  if constexpr (length >= 16) // swap 4-byte long pairs
+    v = ((v >> 32) & 0x00000000FFFFFFFF) | ((v & 0x00000000FFFFFFFF) << 32);
+  return dna{v};
 }
 
 /**
@@ -149,20 +157,21 @@ auto dna::mirrored() const noexcept -> dna {
  */
 auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool, bool> {
   const auto is_invariant = invariant();
-  auto current = std::tuple{*this, false, false, is_invariant};
+  const auto current = std::tuple{*this, false, false, is_invariant};
   const auto transpose = std::tuple{transposed(), false, true, is_invariant};
   const auto mirror = std::tuple{mirrored(), true, false, is_invariant};
   const auto both = std::tuple{transposed().mirrored(), true, true, is_invariant};
 
-  if (transpose < current) current = transpose;
-  if (mirror < current) current = mirror;
-  if (both < current) current = both;
-  return current;
+  // if (transpose < current) current = transpose;
+  // if (mirror < current) current = mirror;
+  // if (both < current) current = both;
+  // return current;
+  return variadic_min(current, transpose, mirror, both);
 }
 
 /**
  * Serializes the DNA strand into an output stream.
- * Little-endian storage format is used.
+ * Big-endian storage format is used.
  */
 void dna::serialize(std::ostream& os) const {
   binary_write(os, nucleotides.to_ullong());
@@ -170,7 +179,7 @@ void dna::serialize(std::ostream& os) const {
 
 /**
  * Deserializes the DNA strand from an input stream.
- * Little-endian storage format is used.
+ * Big-endian storage format is used.
  */
 auto dna::deserialize(std::istream& is) -> dna {
   std::uint64_t value;

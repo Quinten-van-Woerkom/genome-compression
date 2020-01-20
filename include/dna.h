@@ -20,13 +20,26 @@
 namespace fs = std::filesystem;
 
 // Supported nucleic acid codes
+// enum class nac : char {
+//   A = 0b00, C = 0b01, G = 0b10, T = 0b11, R, Y, K, M, S, W, B, D, H, V, N, Indeterminate
+// };
 enum class nac : char {
-  A = 0b00, C = 0b01, G = 0b10, T = 0b11, R, Y, K, M, S, W, B, D, H, V, N, Indeterminate
+  // Pairs of transpose base pairs
+  A = 0b0001, T = 0b1000,
+  C = 0b0010, G = 0b0100,
+  R = 0b0011, Y = 0b1100,
+  K = 0b0111, M = 0b1110,
+  B = 0b0101, V = 0b1010,
+  D = 0b1011, H = 0b1101,
+
+  // These base pairs are their own transpose
+  S = 0b0000, W = 0b1001,
+  N = 0b0110, Indeterminate = 0b1111
 };
 
 // DNA strand of predetermined size
 class dna {
-  static constexpr std::size_t length = 8; // Length of a single strand
+  static constexpr std::size_t length = 16; // Length of a single strand
 public:
   dna() = default;
   dna(const std::string_view strand);
