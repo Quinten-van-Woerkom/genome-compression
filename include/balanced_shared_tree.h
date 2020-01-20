@@ -279,11 +279,9 @@ auto tree_constructor::reduce_segment(Iterable&& segment) -> pointer {
   auto layer = reduce_leaves(segment);
   auto index = 1u;
 
-  // First reduce only as much as necessary to reduce the subtree to a single
-  // root node.
-  for (; layer.size() > 1; ++index)
+  for (; layer.size() > 1 || index < nodes.size(); ++index)
     layer = reduce_nodes(layer, index);
-  
+
   // Then check if any other, bigger, subtrees were already made and match them
   // in depth.
   for (; index < nodes.size(); ++index)
