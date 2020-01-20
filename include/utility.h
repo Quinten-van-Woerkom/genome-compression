@@ -167,3 +167,27 @@ auto variadic_min(T1&& value1, T2&& value2, Ts&&... values) -> decltype(auto)
   ? variadic_min(value2, std::forward<Ts>(values)...)
   : variadic_min(value1, std::forward<Ts>(values)...);
 }
+
+
+/******************************************************************************
+ *  File I/O helpers.
+ *  Used for providing endianness-independent saving and loading.
+ *  Data is stored in little-endian order.
+ */
+template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+void binary_write(std::ostream& os, T value) {
+  for (auto i = 0; i < sizeof(value); ++i) {
+    unsigned char byte = (value >> (8*i)) & 0xff;
+    os.put(byte);
+  }
+}
+
+template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+void binary_read(std::istream& is, T& value) {
+  value = 0;
+  for (auto i = 0; i < sizeof(value); ++i) {
+    unsigned char byte;
+    is.get(reinterpret_cast<char&>(byte));
+    value |= ((T)byte << T(8*i));
+  }
+}
