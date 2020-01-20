@@ -49,21 +49,6 @@ detail::pointer::pointer(std::size_t index, bool mirror, bool transpose)
 }
 
 /**
- * Constructs a direct pointer referring to a DNA strand. Since the DNA strands
- * are smaller in memory than a pointer, they are stored directly.
- * To keep the pointer-like nature of the data, we store the canonical version
- * of a leaf node, which is the version among the set of similar leaves that
- * has the smallest bit representation.
- */
-detail::pointer::pointer(dna leaf, bool add_mirror, bool add_transpose) {
-  auto [canonical, mirror_bit, transpose_bit] = leaf.canonical();
-  data = canonical.to_ullong();
-  mirror = mirror_bit != add_mirror;
-  transpose = transpose_bit != add_transpose;
-  segment ^= ~segment;
-}
-
-/**
  * Constructs a null pointer, indicating an empty subtree.
  * Null pointers have all bits set and are of maximum pointer size. Due to
  * their infrequent occurrence, this bigger size is not an issue, while it
@@ -90,18 +75,6 @@ auto detail::pointer::index() const noexcept -> std::size_t {
 }
 
 /**
- * Interprets the data contained in the pointer as a canonical leaf with
- * applied transformations.
- */
-auto detail::pointer::leaf() const noexcept -> dna {
-  assert(!empty());
-  auto result = dna{data};
-  if (mirror) result = result.mirrored();
-  if (transpose) result = result.transposed();
-  return result;
-}
-
-/**
  * Serializes the pointer to the given output stream in compressed format.
  * Starts with the 4 header bits and the most significant 4 bits, then
  * repeatedly stores the next most significant byte, until no more bytes
@@ -110,12 +83,10 @@ auto detail::pointer::leaf() const noexcept -> dna {
 void detail::pointer::serialize(std::ostream& os) const {
   int index = address_bits[segment]-4;
   std::uint8_t store = ((data >> index) & 0xf) | mirror << 4 | transpose << 5 | segment << 6;
-  // os.put(reinterpret_cast<char&>(store));
-  os.write(reinterpret_cast<char*>(&store), sizeof(store));
+  binary_write(os, store);
   for (index -= 8; index >= 0; index -= 8) {
     store = static_cast<std::uint8_t>(data >> index);
-    // os.put(reinterpret_cast<char&>(store));
-    os.write(reinterpret_cast<char*>(&store), sizeof(store));
+    binary_write(os, store);
   }
 }
 
@@ -125,8 +96,7 @@ void detail::pointer::serialize(std::ostream& os) const {
 auto detail::pointer::deserialize(std::istream& is) -> pointer {
   auto result = pointer{};
   std::uint8_t loaded;
-  // is.get(reinterpret_cast<char&>(loaded));
-  is.read(reinterpret_cast<char*>(&loaded), sizeof(loaded));
+  binary_read(is, loaded);
   result.segment = (loaded >> 6) & 3u;
   result.transpose = (loaded >> 5) & 1u;
   result.mirror = (loaded >> 4) & 1u;
@@ -135,8 +105,7 @@ auto detail::pointer::deserialize(std::istream& is) -> pointer {
   result.data = ((std::uint64_t)loaded & 0xf) << index;
 
   for (index -= 8; index >= 0; index -= 8) {
-    // is.get(reinterpret_cast<char&>(loaded));
-    is.read(reinterpret_cast<char*>(&loaded), sizeof(loaded));
+    binary_read(is, loaded);
     result.data |= ((std::uint64_t)loaded << index);
   }
   return result;
@@ -223,23 +192,11 @@ auto balanced_shared_tree::node_count() const -> std::size_t {
  * Accesses the first or second leaf located in the node pointed to by
  * <pointer>, depending on <index>.
  */
-auto balanced_shared_tree::access_leaf(std::size_t index, pointer current) const -> dna {
-  auto parent_node = access_node(0, current);
-  const auto left = parent_node.left();
-  const auto right = parent_node.right();
-
-  auto descend_leaf = [&](auto left, auto right) {
-    const auto size = (bool)left;
-    const auto mirror = current.is_mirrored();
-    const auto transpose = current.is_transposed();
-    if (index < size) return pointer{left, mirror, transpose};
-    index -= size;
-    return pointer{right, mirror, transpose};
-  };
-  
-  if (current.is_mirrored()) current = descend_leaf(right, left);
-  else current = descend_leaf(left, right);
-  return current.leaf();
+auto balanced_shared_tree::access_leaf(pointer pointer) const -> dna {
+  auto leaf = leaves[pointer.index()];
+  if (pointer.is_mirrored()) leaf = leaf.mirrored();
+  if (pointer.is_transposed()) leaf = leaf.transposed();
+  return leaf;
 }
 
 /**
@@ -247,8 +204,6 @@ auto balanced_shared_tree::access_leaf(std::size_t index, pointer current) const
  * Returned by value since since the nodes must be immutable anyway.
  */
 auto balanced_shared_tree::access_node(std::size_t layer, pointer pointer) const -> node {
-  // assert(layer < nodes.size());
-  // assert(pointer.index() < nodes[layer].size());
   return nodes[layer][pointer.index()];
 }
 
@@ -289,7 +244,23 @@ auto balanced_shared_tree::operator[](std::uint64_t index) const -> dna {
     else current = descend(layer-1, left, right);
   }
 
-  return access_leaf(index, current);
+  const auto& node = access_node(0, current);
+  const auto mirror = current.is_mirrored();
+  const auto transpose = current.is_transposed();
+
+  const auto left = node.left();
+  const auto right = node.right();
+  if (index < !left.empty()) return access_leaf({left, mirror, transpose});
+  else return access_leaf({right, mirror, transpose});
+}
+
+/**
+ * Adds a leaf to the leaves layer.
+ * Precondition: no similar leaves are already present in this layer.
+ * Precondition: the leaf passed is of canonical variant.
+ */
+void balanced_shared_tree::emplace_leaf(dna leaf) {
+  leaves.emplace_back(leaf);
 }
 
 /**
@@ -333,7 +304,7 @@ void balanced_shared_tree::print_unique(std::ostream& os) const {
   for (auto node : nodes.back()) os << node << ", ";
   os << '\n';
 
-  for (int i = nodes.size()-2; i > 0; --i) {
+  for (int i = nodes.size()-2; i >= 0; --i) {
     os << "Layer " << i << " (" << nodes[i].size() << "): ";
     for (auto node : nodes[i]) {
       os << node << " (" << std::hash<detail::node>()(node) << "), ";
@@ -341,9 +312,9 @@ void balanced_shared_tree::print_unique(std::ostream& os) const {
     os << '\n';
   }
 
-  os << "Leaves (" << nodes.front().size() << "): ";
-  for (auto node : nodes.front())
-    os << node.left().leaf() << ' ' << node.right().leaf() << " (" << std::hash<detail::node>()(node) << "), ";
+  os << "Leaves (" << leaves.size() << "): ";
+  for (auto leaf : leaves)
+    os << leaf << " (" << std::hash<dna>()(leaf) << "), ";
   os << '\n';
 }
 
@@ -367,10 +338,11 @@ auto balanced_shared_tree::bytes() const noexcept -> std::size_t {
  */
 void balanced_shared_tree::serialize(std::ostream& os) const {
   root.serialize(os);
-  for (const auto& layer : nodes) {
-    auto size = std::uint64_t(layer.size());
-    os.write(reinterpret_cast<char*>(&size), sizeof(size));
+  binary_write(os, leaves.size());
+  for (const auto& leaf : leaves) leaf.serialize(os);
 
+  for (const auto& layer : nodes) {
+    binary_write(os, layer.size());
     for (const auto& node : layer) node.serialize(os);
   }
 }
@@ -384,13 +356,17 @@ auto balanced_shared_tree::deserialize(std::istream& is) -> balanced_shared_tree
   auto result = balanced_shared_tree{};
   result.root = pointer::deserialize(is);
   std::uint64_t size;
+  binary_read(is, size);
+  for (auto i = 0u; i < size; ++i)
+    result.leaves.emplace_back(dna::deserialize(is));
+
   while (true) {
-    is.read(reinterpret_cast<char*>(&size), sizeof(size));
+    binary_read(is, size);
     if (!is) break;
 
     result.nodes.emplace_back();
     result.nodes.back().reserve(size);
-    for (auto i = 0u; i < (int)size; ++i)
+    for (auto i = 0u; i < size; ++i)
       result.nodes.back().emplace_back(node::deserialize(is));
   }
   return result;
@@ -415,7 +391,7 @@ balanced_shared_tree::iterator::iterator(balanced_shared_tree& parent, std::size
  */
 auto balanced_shared_tree::iterator::operator*() const noexcept -> dna {
   auto top = stack.back().current;
-  return top.leaf();
+  return parent.access_leaf(top);
 }
 
 /**
@@ -448,9 +424,9 @@ void balanced_shared_tree::iterator::next_leaf() {
     // Apply mirroring and transposition, if necessary, and save the resulting
     // state on the stack.
     auto stack_push = [&](auto next) {
-        auto mirror = next.is_mirrored() != top.is_mirrored();
-        auto transpose = next.is_transposed() != top.is_transposed();
-        auto updated_pointer = pointer{next.index(), mirror, transpose};
+        auto mirror = top.is_mirrored();
+        auto transpose = top.is_transposed();
+        auto updated_pointer = pointer{next, mirror, transpose};
         stack.emplace_back(status.layer - 1, updated_pointer);
     };
 
@@ -473,23 +449,86 @@ tree_constructor::tree_constructor(balanced_shared_tree& parent)
 : parent{parent} {}
 
 /**
- * Constructs and emplaces a node inside the tree during its construction.
- * A pointer to the node is stored in <next_layer>.
+ * Checks if a leaf already exists in the tree, and if that is not the case,
+ * inserts it into the map and into the tree dictionary.
  */
-void tree_constructor::emplace(
-  std::vector<pointer>& layer, std::size_t layer_index,
-  pointer left, pointer right)
+auto tree_constructor::emplace_leaf(dna leaf) -> pointer {
+  auto [canonical, mirror, transpose] = leaf.canonical();
+  auto insertion = leaves.emplace(canonical, parent.leaf_count());
+  auto index = (*insertion.first).second;
+
+  if (insertion.second) {
+    parent.emplace_leaf(canonical);
+  }
+  return pointer{index, mirror, transpose};
+}
+
+/**
+ * Emplaces leaves into the leaf map, if necessary, and adds a node referencing
+ * them to the first non-leaf layer.
+ */
+auto tree_constructor::emplace_leaves(dna left, dna right) -> pointer {
+  auto left_pointer = emplace_leaf(left);
+  auto right_pointer = emplace_leaf(right);
+  return emplace_node(0, left_pointer, right_pointer);
+}
+
+/**
+ * Emplaces a single leaf in the map, and creates its parent node.
+ * Used for leaves that have no neighbour on the right side.
+ */
+auto tree_constructor::emplace_leaves(dna last) -> pointer {
+  auto pointer = emplace_leaf(last);
+  return emplace_node(0, pointer);
+}
+
+/**
+ * Constructs and emplaces a node inside the tree during its construction.
+ * Returns a pointer to this node.
+ */
+auto tree_constructor::emplace_node(std::size_t layer, pointer left, pointer right) -> pointer
 {
   auto created_node = node{left, right};
-  auto insertion = nodes[layer_index].emplace(created_node, parent.node_count(layer_index));
+  auto insertion = nodes[layer].emplace(created_node, parent.node_count(layer));
   auto canonical_node = (*insertion.first).first;
   auto index = (*insertion.first).second;
 
   if (insertion.second) {
-    parent.emplace_node(layer_index, created_node);
-    layer.emplace_back(index);
+    parent.emplace_node(layer, created_node);
+    return pointer{index, false, false};
   } else {
     auto transform = created_node.transformations(canonical_node);
-    layer.emplace_back(index, transform.first, transform.second);
+    return pointer{index, transform.first, transform.second};
   }
+}
+
+/**
+ * Reduces all gathered root nodes in order to fully reduce the tree.
+ */
+auto tree_constructor::reduce_roots() -> pointer {
+  for (auto index = nodes.size(); roots.size() > 1; ++index)
+    roots = reduce_nodes(roots, index);
+  return roots.front();
+}
+
+/**
+ * Reduces the current layer by constructing nodes out of the pointers it
+ * contains, and emplacing those nodes in the correct layers and maps, if
+ * necessary.
+ */
+auto tree_constructor::reduce_nodes(std::vector<pointer>& iterable, std::size_t index) -> std::vector<pointer> {
+  auto layer = std::vector<pointer>{};
+  layer.reserve(iterable.size()/2 + iterable.size()%2);
+
+  if (parent.depth()-2 < index) {
+    parent.add_layer();
+    nodes.emplace_back();
+  }
+
+  foreach_pair(iterable,
+    [&](auto left, auto right) { layer.emplace_back(emplace_node(index, left, right)); },
+    [&](auto last) { layer.emplace_back(emplace_node(index, last)); }
+  );
+
+  return layer;
 }

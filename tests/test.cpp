@@ -30,21 +30,19 @@ using detail::pointer;
 
 #define TEST_END(name) \
     if (!errors) std::cout << "<" << name << "> Finished without errors\n"; \
+    else std::cerr << "<" << name << "> Finished, but not all tests passed\n"; \
     return errors;
 
 auto test_pointer() -> int {
   TEST_START("Tree pointer");
 
-  auto leaf = dna::random(3);
-  auto basis = detail::pointer{leaf};
+  auto basis = detail::pointer{3280, false, false};
   auto transposed = basis.transposed();
   auto mirrored = basis.mirrored();
-  auto inner_pointer = detail::pointer{3280, true, true};
 
-  expects(basis.leaf() == leaf, "DNA conversion does not match input");
   expects(basis != transposed, "Non-null pointers can never match when transposed");
   expects(basis != mirrored, "Pointers that are not invariant under mirroring should not match when mirrored");
-  expects(inner_pointer.index() == 3280, "Index conversion error: ", inner_pointer.index(), " != ", 3280);
+  expects(basis.index() == 3280, "Index conversion error: ", basis.index(), " != ", 3280);
 
   TEST_END("Tree pointer");
 }
@@ -108,14 +106,13 @@ auto test_tree_factory() -> int {
   TEST_START("Tree factory");
 
   auto path = "data/chmpxx";
-  // auto path = "../GRCm38.fna";
   auto data = read_genome(path);
-  auto compressed = balanced_shared_tree{path};
+  auto compressed = balanced_shared_tree{data};
 
   expects(
     data.size() == compressed.width(),
     "Raw data size (", data.size(), ") does not match compressed data size (",
-    compressed.width(), ", ", compressed.node_count(), "nodes)"
+    compressed.width(), ", ", compressed.node_count(), " nodes)"
   );
 
   auto i = 0;
@@ -136,7 +133,7 @@ auto test_similarity_transforms() -> int {
   TEST_START("Similarity transforms");
 
   {
-    auto basis = dna::random(1);
+    auto basis = pointer{42, false, false};
     auto transposed = basis.transposed();
     auto mirrored = basis.mirrored();
     auto inverted = basis.inverted();
@@ -156,8 +153,8 @@ auto test_similarity_transforms() -> int {
   }
 
   {
-    auto basis = dna::random(1);
-    auto other = dna::random(42);
+    auto basis = pointer{1, true, false};
+    auto other = pointer{4, false, false};
     auto left = node{basis, other};
     auto right = node{other, basis};
 
@@ -174,9 +171,9 @@ auto test_similarity_transforms() -> int {
     auto tree = balanced_shared_tree{con_layer};
 
     expects(
-        tree.node_count() == 3,
+        tree.node_count() == 2,
         "Similar modes should merge: node count is ", tree.node_count(),
-        ", not matching the expected 3"
+        ", not matching the expected 2"
     );
   }
 
@@ -218,12 +215,16 @@ auto test_serialization() -> int {
     auto a = dna::random(0);
     auto b = dna::random(1);
     auto c = dna::random(2);
+    auto stream = std::stringstream{};
+    a.serialize(stream);
+    auto sa = dna::deserialize(stream);
+    expects(a == sa, "Serialization and deserialization should result in identical dna: ", a, " != ", sa);
 
-    auto basis = pointer{a};
-    auto other = pointer{b};
+    auto basis = pointer{0, true, false};
+    auto other = pointer{42, false, false};
     auto left = node{basis, other};
     auto right = node{other, basis};
-    auto stream = std::stringstream{};
+    stream = std::stringstream{};
 
     basis.serialize(stream);
     other.serialize(stream);
@@ -247,6 +248,7 @@ auto test_serialization() -> int {
     auto load = balanced_shared_tree::deserialize(stream);
 
     expects(tree.width() == load.width(), "Serialization and deserialization should result in identical tree size");
+    expects(tree.leaf_count() == load.leaf_count(), "Serialization and deserialization should result in identical tree size");
 
     for (auto i = 0u; i < tree.width(); ++i) {
       expects(tree[i] == load[i], "Serialization and deserialization should result in identical tree: ", tree[i], " != ", load[i]);
@@ -279,7 +281,7 @@ auto test_tree_iteration() -> int {
     expects(
       compressed[i] == c,
       "compressed[i] != compressed[i] for i = ", i, " out of ", data.size() - 1, '\n',
-      "\tcompressed[i]\t\t= ", data[i], '\n',
+      "\tcompressed[i]\t= ", compressed[i], '\n',
       "\tcompressed[i]\t= ", c
     );
     ++i;

@@ -36,7 +36,7 @@ public:
   pointer(std::nullptr_t = nullptr);
   pointer(const pointer& other, bool mirror = false, bool transpose = false);
   pointer(std::size_t index, bool mirror = false, bool transpose = false);
-  pointer(dna leaf, bool mirror = false, bool transpose = false);
+  // pointer(dna leaf, bool mirror = false, bool transpose = false);
 
   bool operator==(const pointer& other) const noexcept { return to_ullong() == other.to_ullong(); }
   bool operator!=(const pointer& other) const noexcept { return to_ullong() != other.to_ullong(); }
@@ -154,14 +154,15 @@ public:
   balanced_shared_tree(fasta_reader file);
   balanced_shared_tree(std::vector<dna>& data);
 
-  auto depth() const { return nodes.size(); }
+  auto depth() const { return nodes.size() + 1; }
   auto width() const { assert(nodes.back().size() == 1); return children(nodes.size()-1, root); }
 
   auto children(std::size_t layer, pointer pointer) const -> std::size_t;
   auto node_count() const -> std::size_t;
   auto node_count(std::size_t layer) const { return nodes[layer].size(); }
+  auto leaf_count() const noexcept { return leaves.size(); }
 
-  auto access_leaf(std::size_t index, pointer pointer) const -> dna;
+  auto access_leaf(pointer pointer) const -> dna;
   auto access_node(std::size_t layer, pointer pointer) const -> node;
   auto operator[](std::uint64_t index) const -> dna;
 
@@ -206,6 +207,7 @@ public:
 
 private:
   std::vector<std::vector<node>> nodes;
+  std::vector<dna> leaves;
   pointer root;
 };
 
@@ -219,46 +221,54 @@ class tree_constructor {
 public:
   using pointer = balanced_shared_tree::pointer;
   using node = balanced_shared_tree::node;
-  using hash_map = robin_hood::unordered_flat_map<node, std::uint64_t>;
+
+  template<typename T>
+  using hash_map = robin_hood::unordered_flat_map<T, std::size_t>;
 
   tree_constructor(balanced_shared_tree& parent);
 
-  void emplace(std::vector<pointer>& layer, std::size_t layer_index, pointer left, pointer right = nullptr);
+  auto emplace_node(std::size_t layer_index, pointer left, pointer right = nullptr) -> pointer;
+  auto emplace_leaves(dna left, dna right) -> pointer;
+  auto emplace_leaves(dna last) -> pointer;
+  auto emplace_leaf(dna leaf) -> pointer;
+
+  auto reduce_nodes(std::vector<pointer>& segment, std::size_t index) -> std::vector<pointer>;
+  auto reduce_roots() -> pointer;
 
   template<typename Iterable>
-  auto reduce_layer(Iterable&& layer, std::size_t index) -> std::vector<pointer>;
+  auto reduce_leaves(Iterable&& layer) -> std::vector<pointer>;
 
   template<typename Iterable>
-  auto reduce_segment(Iterable&& segment, std::size_t index = 0) -> pointer;
+  auto reduce_segment(Iterable&& layer) -> pointer;
 
   template<typename Iterable>
   auto reduce(Iterable&& data) -> pointer;
 
 private:
   balanced_shared_tree& parent;
-  std::vector<hash_map> nodes;
+  std::vector<hash_map<node>> nodes;
+  hash_map<dna> leaves;
   std::vector<pointer> roots;
 };
 
 /**
- * Reduces the current layer by constructing nodes out of the pointers it
- * contains, and emplacing those nodes in the correct layers and maps, if
- * necessary.
+ * Reduces the input iterable of DNA strands, emplacing any newly found DNA
+ * strands in the leaf map and layer.
  */
 template<typename Iterable>
-auto tree_constructor::reduce_layer(Iterable&& iterable, std::size_t index) -> std::vector<pointer> {
+auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer> {
   auto layer = std::vector<pointer>{};
   layer.reserve(iterable.size()/2 + iterable.size()%2);
-  if (parent.depth() <= index) {
+
+  if (parent.depth() == 1) {
     parent.add_layer();
     nodes.emplace_back();
   }
 
   foreach_pair(iterable,
-    [&](auto left, auto right) { emplace(layer, index, left, right); },
-    [&](auto last) { emplace(layer, index, last); }
+    [&](auto left, auto right) { layer.emplace_back(emplace_leaves(left, right)); },
+    [&](auto last) { layer.emplace_back(emplace_leaves(last)); }
   );
-
   return layer;
 }
 
@@ -267,10 +277,10 @@ auto tree_constructor::reduce_layer(Iterable&& iterable, std::size_t index) -> s
  * tree according to canonical representation.
  */
 template<typename Iterable>
-auto tree_constructor::reduce_segment(Iterable&& segment, std::size_t index) -> pointer {
-  auto layer = reduce_layer(segment, index++);
-  for (; layer.size() > 1; ++index)
-    layer = reduce_layer(layer, index);
+auto tree_constructor::reduce_segment(Iterable&& segment) -> pointer {
+  auto layer = reduce_leaves(segment);
+  for (auto index = 1u; layer.size() > 1; ++index)
+    layer = reduce_nodes(layer, index);
   return layer.front();
 }
 
@@ -282,11 +292,10 @@ auto tree_constructor::reduce_segment(Iterable&& segment, std::size_t index) -> 
 template<typename Iterable>
 auto tree_constructor::reduce(Iterable&& data) -> pointer {
   constexpr auto segment_size = (1u<<10);
-  auto segment_roots = std::vector<pointer>{};
 
   for (auto segment : chunks(data, segment_size)) {
     auto segment_root = reduce_segment(segment);
-    segment_roots.emplace_back(segment_root);
+    roots.emplace_back(segment_root);
   }
-  return reduce_segment(segment_roots, nodes.size());
+  return reduce_roots();
 }
