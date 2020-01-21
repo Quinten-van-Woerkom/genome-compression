@@ -19,7 +19,7 @@ class fasta_reader {
 public:
   using value_type = dna;
 
-  fasta_reader(std::filesystem::path path, std::size_t buffer_size = (1<<25));
+  fasta_reader(std::filesystem::path path, std::size_t buffer_size = (1<<22));
   fasta_reader(const fasta_reader&) = delete;
   fasta_reader(fasta_reader&&) = default;
 
@@ -28,7 +28,7 @@ public:
   }
 
   auto eof() const -> bool { return end_of_file; }
-  auto current_symbol() -> dna { return std::string_view{buffer.data() + index, dna::size()}; }
+  auto current_symbol() -> dna { return buffer[index]; }
   void next_symbol();
   void load_buffer();
 
@@ -58,8 +58,9 @@ public:
   auto end() { return iterator{*this}; }
 
 private:
-  std::vector<char> background_buffer;
-  std::vector<char> buffer;
+  std::vector<dna> background_buffer;
+  std::vector<dna> buffer;
+  std::vector<char> char_buffer;
   std::ifstream file;
   std::filesystem::path path;
   std::size_t index;

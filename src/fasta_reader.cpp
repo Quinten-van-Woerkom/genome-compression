@@ -5,6 +5,7 @@
  */
 
 #include "fasta_reader.h"
+#include "dna.h"
 
 #include <iostream>
 #include <limits>
@@ -15,8 +16,9 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
     std::cerr << "Unable to open file, aborting...\n";
     exit(1);
   }
-  buffer.resize(buffer_size - buffer_size%dna::size() + 1);
-  background_buffer.resize(buffer_size - buffer_size%dna::size() + 1);
+  buffer.resize(buffer_size);
+  background_buffer.resize(buffer_size);
+  char_buffer.resize(buffer_size*dna::size() + 1);
   load_buffer();
   load_buffer();
 }
@@ -25,12 +27,10 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
  *  Advances the reader towards the next meaningful FASTA symbol.
  */
 void fasta_reader::next_symbol() {
-  index += dna::size();
-  if (index >= buffer.size()-1) {
-    if (!file.eof())
-      load_buffer();
-    else
-      end_of_file = true;
+  ++index;
+  if (index >= buffer.size()) {
+    if (!file.eof()) load_buffer();
+    else end_of_file = true;
   }
 }
 
@@ -44,12 +44,12 @@ void fasta_reader::load_buffer() {
 
   auto load_in_background = [&]() {
     auto position = 0lu;
-    while (position < background_buffer.size()-1) {
+    while (position < char_buffer.size()-1) {
       file.clear();
       if (file.peek() == '>' || file.peek() == '\n') {
         file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
       }
-      file.getline(&background_buffer[position], background_buffer.size() - position);
+      file.getline(&char_buffer[position], char_buffer.size() - position);
 
       // When a newline is found: failbit == false, actual line size = gcount() - 1
       // When the buffer end is reached: failbit == true, actual line size = gcount()
@@ -57,10 +57,14 @@ void fasta_reader::load_buffer() {
       position += size;
       
       if (file.eof()) {
-        background_buffer.resize(position+1 - (position+1)%dna::size());
-        return;
+        char_buffer.resize(position+1 - (position+1)%dna::size());
+        background_buffer.resize(char_buffer.size() / dna::size());
+        break;
       }
     }
+
+    for (auto i = 0u; i < background_buffer.size(); ++i)
+      background_buffer[i] = dna{std::string_view{&char_buffer[i*dna::size()], dna::size()}};
   };
 
   background_loader = std::thread{load_in_background};
