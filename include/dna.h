@@ -37,7 +37,7 @@ enum class nac : char {
  *  codes are supported.
  */
 class dna {
-  static constexpr std::size_t length = 16; // Length of a single strand
+  static constexpr std::size_t length = 12;   // Length of a single strand
 public:
   dna() = default;
   dna(const std::string_view strand);

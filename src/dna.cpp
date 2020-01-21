@@ -111,16 +111,24 @@ auto dna::transposed() const noexcept -> dna {
  * Returns a mirrored version of the DNA strand.
  */
 auto dna::mirrored() const noexcept -> dna {
-  auto v = nucleotides;
-  if constexpr (length >= 2)  // swap nibbles
-    v = ((v >> 4) & 0x0F0F0F0F0F0F0F0F) | ((v & 0x0F0F0F0F0F0F0F0F) << 4);
-  if constexpr (length >= 4) // swap bytes
-    v = ((v >> 8) & 0x00FF00FF00FF00FF) | ((v & 0x00FF00FF00FF00FF) << 8);
-  if constexpr (length >= 8) // swap 2-byte long pairs
-    v = ((v >> 16) & 0x0000FFFF0000FFFF) | ((v & 0x0000FFFF0000FFFF) << 16);
-  if constexpr (length >= 16) // swap 4-byte long pairs
-    v = ((v >> 32) & 0x00000000FFFFFFFF) | ((v & 0x00000000FFFFFFFF) << 32);
-  return dna{v};
+  // Bit twiddling hack for powers of two.
+  if constexpr (length == 2 || length == 4 || length == 8 || length == 16) {
+    auto v = nucleotides;
+    if constexpr (length >= 2)  // swap nibbles
+      v = ((v >> 4) & 0x0F0F0F0F0F0F0F0F) | ((v & 0x0F0F0F0F0F0F0F0F) << 4);
+    if constexpr (length >= 4) // swap bytes
+      v = ((v >> 8) & 0x00FF00FF00FF00FF) | ((v & 0x00FF00FF00FF00FF) << 8);
+    if constexpr (length >= 8) // swap 2-byte long pairs
+      v = ((v >> 16) & 0x0000FFFF0000FFFF) | ((v & 0x0000FFFF0000FFFF) << 16);
+    if constexpr (length >= 16) // swap 4-byte long pairs
+      v = ((v >> 32) & 0x00000000FFFFFFFF) | ((v & 0x00000000FFFFFFFF) << 32);
+    return dna{v};
+  } else {
+    dna result{};
+    for (auto i = 0u; i < length; ++i)
+      result.set(i, code(length - i - 1));
+    return result;
+  }
 }
 
 /**
