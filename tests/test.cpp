@@ -9,7 +9,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "balanced_shared_tree.h"
+#include "shared_tree.h"
 #include "dna.h"
 #include "fasta_reader.h"
 #include "utility.h"
@@ -119,7 +119,7 @@ auto test_tree_factory() -> int {
 
   auto path = "data/chmpxx";
   auto data = read_genome(path);
-  auto compressed = balanced_shared_tree{data};
+  auto compressed = shared_tree{data};
 
   expects(
     data.size() == compressed.width(),
@@ -180,7 +180,7 @@ auto test_similarity_transforms() -> int {
     auto inverted = basis.inverted();
 
     auto con_layer = std::vector{basis, transposed, inverted, mirrored};
-    auto tree = balanced_shared_tree{con_layer};
+    auto tree = shared_tree{con_layer};
 
     expects(
         tree.node_count() == 2,
@@ -207,7 +207,7 @@ auto test_similarity_transforms() -> int {
     auto b = dna{string2};
     auto c = b.mirrored();
     auto data = std::vector{a, b, c, a};
-    auto tree = balanced_shared_tree{data};
+    auto tree = shared_tree{data};
 
     expects(tree.node_count() == 2, "Leaves that are invariant under transformation should be considered as such when merging:\n", tree);
   }
@@ -219,7 +219,7 @@ auto test_similarity_transforms() -> int {
     auto b = dna{string2};
     auto c = b.mirrored();
     auto data = std::vector{b, a, a, c};
-    auto tree = balanced_shared_tree{data};
+    auto tree = shared_tree{data};
 
     expects(tree.node_count() == 2, "Leaves that are invariant under transformation should be considered as such when merging:\n", tree);
   }
@@ -233,7 +233,7 @@ auto test_tree_transposition() -> int {
   auto a = dna::random(0);
   auto t = a.transposed();
   auto data = std::vector<dna>{a, a, t, a};
-  auto compressed = balanced_shared_tree(data);
+  auto compressed = shared_tree(data);
 
   expects(
     data.size() == compressed.width(),
@@ -289,10 +289,10 @@ auto test_serialization() -> int {
     expects(right == sright, "Serialization and deserialization should result in identical nodes: ", right, " != ", sright);
 
     auto data = std::vector{a, b, b, a, c, a};
-    auto tree = balanced_shared_tree{data};
+    auto tree = shared_tree{data};
     stream = std::stringstream{};
     tree.serialize(stream);
-    auto load = balanced_shared_tree::deserialize(stream);
+    auto load = shared_tree::deserialize(stream);
 
     expects(tree.width() == load.width(), "Serialization and deserialization should result in identical tree size");
     expects(tree.leaf_count() == load.leaf_count(), "Serialization and deserialization should result in identical tree size");
@@ -313,7 +313,7 @@ auto test_frequency_sort() -> int {
   auto c = dna::random(3);
   auto data = std::vector{b, b, b, a, c, b, a, c, b, a, b, a, c, a, c, a, c, a, b, c, a, a, a, a, a, a, a, a, a, a, a, a, a, a};
 
-  auto compressed = balanced_shared_tree{data};
+  auto compressed = shared_tree{data};
   auto old = compressed;
   compressed.frequency_sort();
 
@@ -337,7 +337,7 @@ auto test_tree_iteration() -> int {
 
   auto path = "data/chmpxx";
   auto data = read_genome(path);
-  auto compressed = balanced_shared_tree{path};
+  auto compressed = shared_tree{path};
 
   auto i = 0;
   for (const auto c : compressed) {

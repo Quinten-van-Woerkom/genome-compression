@@ -8,7 +8,7 @@
 #include <iostream>
 #include <vector>
 
-#include "balanced_shared_tree.h"
+#include "shared_tree.h"
 #include "dna.h"
 #include "fasta_reader.h"
 
@@ -25,7 +25,7 @@ int main(int argc, char* argv[]) {
 
   // auto data = fasta_reader{path};
   // auto compressed = shared_tree::create_balanced(data);
-  auto compressed = balanced_shared_tree{path};
+  auto compressed = shared_tree{path};
 
   auto end = std::chrono::high_resolution_clock::now();
   auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
