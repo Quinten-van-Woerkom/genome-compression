@@ -16,6 +16,12 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
     std::cerr << "Unable to open file, aborting...\n";
     exit(1);
   }
+
+  // Make sure that we do not allocate an unnecessarily big buffer.
+  const auto file_size = std::filesystem::file_size(path);
+  if (file_size < buffer_size*(dna::size()/2))
+    buffer_size = file_size;
+
   buffer.resize(buffer_size);
   background_buffer.resize(buffer_size);
   char_buffer.resize(buffer_size*dna::size() + 1);
