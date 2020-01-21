@@ -230,8 +230,8 @@ public:
   using pointer = shared_tree::pointer;
   using node = shared_tree::node;
 
-  // template<typename T>
-  // using hash_map = robin_hood::unordered_flat_map<T, std::size_t>;
+  // Parallel flat hash map offers better performance guarantees than robin hood.
+  // In addition, it has concurrency capabilities that might be useful later.
   template<typename T>
   using hash_map = phmap::parallel_flat_hash_map<T, std::size_t>;
 
@@ -302,7 +302,7 @@ auto tree_constructor::reduce_segment(Iterable&& segment) -> pointer {
  */
 template<typename Iterable>
 auto tree_constructor::reduce(Iterable&& data) -> pointer {
-  constexpr auto subtree_depth = 20;
+  constexpr auto subtree_depth = 25;
   constexpr auto subtree_width = (1u<<subtree_depth);
 
   for (auto segment : chunks(data, subtree_width)) {
