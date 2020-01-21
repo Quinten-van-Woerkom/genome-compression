@@ -31,6 +31,7 @@ public:
   auto current_symbol() -> dna { return buffer[index]; }
   void next_symbol();
   void load_buffer();
+  void swap_buffers();
 
   auto size() -> std::size_t;
 

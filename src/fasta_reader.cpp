@@ -20,7 +20,8 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
   background_buffer.resize(buffer_size);
   char_buffer.resize(buffer_size*dna::size() + 1);
   load_buffer();
-  load_buffer();
+  std::swap(background_buffer, buffer);
+  background_loader = std::thread{&fasta_reader::load_buffer, this};
 }
 
 /**
@@ -29,45 +30,49 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
 void fasta_reader::next_symbol() {
   ++index;
   if (index >= buffer.size()) {
-    if (!file.eof()) load_buffer();
+    if (!file.eof()) swap_buffers();
     else end_of_file = true;
   }
 }
 
 /**
- *  Loads the next data in the FASTA file into the current buffer.
+ * Waits until the background thread has finished loading the next buffer, and
+ * then swaps it with the current buffer, afterwards dispatching the background
+ * thread to load the next buffer.
  */
-void fasta_reader::load_buffer() {
+void fasta_reader::swap_buffers() {
   if (background_loader.joinable()) background_loader.join();
   std::swap(background_buffer, buffer);
   index = 0;
+  background_loader = std::thread{&fasta_reader::load_buffer, this};
+}
 
-  auto load_in_background = [&]() {
-    auto position = 0lu;
-    while (position < char_buffer.size()-1) {
-      file.clear();
-      if (file.peek() == '>' || file.peek() == '\n') {
-        file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      }
-      file.getline(&char_buffer[position], char_buffer.size() - position);
-
-      // When a newline is found: failbit == false, actual line size = gcount() - 1
-      // When the buffer end is reached: failbit == true, actual line size = gcount()
-      const auto size = file.fail() ? file.gcount() : file.gcount() - 1;
-      position += size;
-      
-      if (file.eof()) {
-        char_buffer.resize(position+1 - (position+1)%dna::size());
-        background_buffer.resize(char_buffer.size() / dna::size());
-        break;
-      }
+/**
+ *  Loads the next data in the FASTA file into the background buffer.
+ */
+void fasta_reader::load_buffer() {
+  auto position = 0lu;
+  while (position < char_buffer.size()-1) {
+    file.clear();
+    if (file.peek() == '>' || file.peek() == '\n') {
+      file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
+    file.getline(&char_buffer[position], char_buffer.size() - position);
 
-    for (auto i = 0u; i < background_buffer.size(); ++i)
-      background_buffer[i] = dna{std::string_view{&char_buffer[i*dna::size()], dna::size()}};
-  };
+    // When a newline is found: failbit == false, actual line size = gcount() - 1
+    // When the buffer end is reached: failbit == true, actual line size = gcount()
+    const auto size = file.fail() ? file.gcount() : file.gcount() - 1;
+    position += size;
+    
+    if (file.eof()) {
+      char_buffer.resize(position+1 - (position+1)%dna::size());
+      background_buffer.resize(char_buffer.size() / dna::size());
+      break;
+    }
+  }
 
-  background_loader = std::thread{load_in_background};
+  for (auto i = 0u; i < background_buffer.size(); ++i)
+    background_buffer[i] = dna{std::string_view{&char_buffer[i*dna::size()], dna::size()}};
 }
 
 /**

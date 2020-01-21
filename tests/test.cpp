@@ -315,7 +315,7 @@ auto test_frequency_sort() -> int {
 
   auto compressed = shared_tree{data};
   auto old = compressed;
-  compressed.frequency_sort();
+  compressed.sort_tree();
 
   auto i = 0;
   auto size = old.width();

@@ -5,6 +5,7 @@
  *  those trees. This does mean that unbalanced trees are not supported.
  */
 
+#include <future>
 #include <limits>
 #include <numeric>
 
@@ -338,36 +339,42 @@ void shared_tree::store_histogram(std::filesystem::path path) const {
 }
 
 /**
- * Sorts the pointers in each layer based on their relative reference count, to
- * reduce the pointers size required to refer to the most-referenced bits.
- * This further improves the effectiveness of pointer compression.
+ * Helper functions in layer sorting.
  */
-void shared_tree::frequency_sort() {
-  // Increasing vector of indices.
-  auto iota = [](auto size) {
-    auto vector = std::vector<std::size_t>(size);
-    std::iota(vector.begin(), vector.end(), 0);
-    return vector;
-  };
+auto iota(std::size_t size) {
+  auto vector = std::vector<std::size_t>(size);
+  std::iota(vector.begin(), vector.end(), 0);
+  return vector;
+}
 
-  // Inverts a vector of indices, so that the value i located at j
-  // becomes the value of j located at i.
-  auto invert_indices = [](const auto& indices) {
-    auto inverted = indices;
-    for (auto i = 0u; i < indices.size(); ++i)
-      inverted[indices[i]] = i;
-    return inverted;
-  };
+/**
+ * Inverts a vector of indices, so that the value i located at j
+ * becomes the value of j located at i.
+ */
+auto invert_indices(const std::vector<std::size_t>& indices) {
+  auto inverted = indices;
+  for (auto i = 0u; i < indices.size(); ++i)
+    inverted[indices[i]] = i;
+  return inverted;
+};
 
-  // Returns the child layer, but then reordered so that child i is now located at
-  // index indices[i].
-  auto reorder_children = [](const auto& children, const auto& indices) {
-    auto reordered = children;
-    for (auto i = 0u; i < indices.size(); ++i)
-      reordered[indices[i]] = children[i];
-    return reordered;
-  };
+/**
+ * Returns the child layer, but then reordered so that child i is now located at
+ * index indices[i].
+ */
+template<typename T>
+auto reorder_layer(const std::vector<T>& children, const std::vector<std::size_t>& indices) {
+  auto reordered = children;
+  for (auto i = 0u; i < indices.size(); ++i)
+    reordered[indices[i]] = children[i];
+  return reordered;
+};
 
+/**
+ * Rewires all nodes to point to the correct children according to the child
+ * reshuffling as indicated by indices.
+ */
+void shared_tree::rewire_nodes(std::size_t layer, const std::vector<std::size_t>& indices) {
   // Rewires a pointer to point to the same child, but then sorted.
   auto rewire_pointer = [](auto old, const auto& indices) {
     if (old.empty()) return old;
@@ -385,25 +392,63 @@ void shared_tree::frequency_sort() {
     return node{left, right};
   };
 
-  // Sorts a layer based on the frequency of reference.
-  // Rewires parents to connect to the same children.
-  auto sort_layer = [&](auto& children, auto& parents, auto index) {
-    auto frequencies = histogram(index);
-    auto indices = iota(frequencies.size());
+  std::transform(nodes[layer].begin(), nodes[layer].end(), nodes[layer].begin(),
+    [&](auto old) { return rewire_node(old, indices); });
+}
 
-    std::stable_sort(indices.begin(), indices.end(),
-      [&](auto a, auto b) { return frequencies[a] > frequencies[b]; });
+/**
+ * Sorts the leaves based on frequency of reference by the parent layer.
+ * Also rewires the parent nodes to match this shuffle.
+ */
+void shared_tree::sort_leaves() {
+  auto frequencies = histogram(0);
+  auto indices = iota(frequencies.size());
 
-    indices = invert_indices(indices);
-    children = reorder_children(children, indices);
+  std::stable_sort(indices.begin(), indices.end(),
+    [&](auto a, auto b) { return frequencies[a] > frequencies[b]; });
 
-    std::transform(parents.begin(), parents.end(), parents.begin(),
-      [&](auto old) { return rewire_node(old, indices); });
-  };
 
-  sort_layer(leaves, nodes[0], 0);
-  for (auto layer = 1u; layer < nodes.size(); ++layer)
-    sort_layer(nodes[layer-1], nodes[layer], layer);
+  indices = invert_indices(indices);
+  leaves = reorder_layer(leaves, indices);
+  rewire_nodes(0, indices);
+}
+
+/**
+ * Sorts the layer based on frequency of reference by its parent layer.
+ * Also rewires those parent nodes to match this shuffle.
+ */
+void shared_tree::sort_nodes(std::size_t layer) {
+  auto frequencies = histogram(layer+1);
+  auto indices = iota(frequencies.size());
+
+  std::stable_sort(indices.begin(), indices.end(),
+    [&](auto a, auto b) { return frequencies[a] > frequencies[b]; });
+
+  indices = invert_indices(indices);
+  nodes[layer] = reorder_layer(nodes[layer], indices);
+  rewire_nodes(layer+1, indices);
+}
+
+/**
+ * Sorts the pointers in each layer based on their relative reference count, to
+ * reduce the pointers size required to refer to the most-referenced bits.
+ * This further improves the effectiveness of pointer compression.
+ */
+void shared_tree::sort_tree() {
+  // A red-black ordering is applied, as layers separated by at least one other
+  // layer can be reordered independently.
+  std::vector<std::thread> threads;
+  threads.emplace_back(&shared_tree::sort_leaves, this);
+  for (auto layer = 1u; layer < nodes.size()-1; layer += 2)
+    threads.emplace_back(&shared_tree::sort_nodes, this, layer);
+
+  for (auto& thread : threads) thread.join();
+
+  threads.clear();
+  for (auto layer = 0u; layer < nodes.size()-1; layer += 2)
+    threads.emplace_back(&shared_tree::sort_nodes, this, layer);
+
+  for (auto& thread : threads) thread.join();
 }
 
 /**
@@ -619,6 +664,7 @@ auto tree_constructor::reduce_nodes(std::vector<pointer>& iterable, std::size_t 
   if (parent.depth()-2 < index) {
     parent.add_layer();
     nodes.emplace_back();
+    nodes_mutex.emplace_back();
   }
 
   foreach_pair(iterable,

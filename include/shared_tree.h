@@ -10,8 +10,10 @@
 #include <array>
 #include <cassert>
 #include <cstdint>
-#include <iostream>
+#include <deque>
 #include <filesystem>
+#include <iostream>
+#include <mutex>
 #include <vector>
 
 #include "robin_hood.h"
@@ -163,7 +165,11 @@ public:
 
   auto histogram(std::size_t layer) const -> std::vector<std::size_t>;
   void store_histogram(std::filesystem::path) const;
-  void frequency_sort();
+
+  void rewire_nodes(std::size_t layer, const std::vector<std::size_t>& indices);
+  void sort_leaves();
+  void sort_nodes(std::size_t layer);
+  void sort_tree();
 
   auto bytes() const noexcept -> std::size_t;
   void serialize(std::ostream& os) const;
@@ -249,7 +255,7 @@ public:
   auto reduce_leaves(Iterable&& layer) -> std::vector<pointer>;
 
   template<typename Iterable>
-  auto reduce_segment(Iterable&& layer) -> pointer;
+  void reduce_segment(Iterable&& layer);
 
   template<typename Iterable>
   auto reduce(Iterable&& data) -> pointer;
@@ -259,6 +265,9 @@ private:
   std::vector<hash_map<node>> nodes;
   hash_map<dna> leaves;
   std::vector<pointer> roots;
+  std::deque<std::mutex> nodes_mutex;
+  std::mutex leaves_mutex;
+  std::mutex roots_mutex;
 };
 
 /**
@@ -273,6 +282,7 @@ auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer
   if (parent.depth() == 1) {
     parent.add_layer();
     nodes.emplace_back();
+    nodes_mutex.emplace_back();
   }
 
   foreach_pair(iterable,
@@ -287,12 +297,15 @@ auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer
  * tree according to canonical representation.
  */
 template<typename Iterable>
-auto tree_constructor::reduce_segment(Iterable&& segment) -> pointer {
-  auto layer = reduce_leaves(segment);
+void tree_constructor::reduce_segment(Iterable&& segment) {
+  std::vector<pointer> layer;
+  
+  layer = reduce_leaves(segment);
   for (auto index = 1u; layer.size() > 1 || index < nodes.size(); ++index)
     layer = reduce_nodes(layer, index);
 
-  return layer.front();
+  std::lock_guard lock_roots{roots_mutex};
+  roots.emplace_back(layer.front());
 }
 
 /**
@@ -305,9 +318,13 @@ auto tree_constructor::reduce(Iterable&& data) -> pointer {
   constexpr auto subtree_depth = 25;
   constexpr auto subtree_width = (1u<<subtree_depth);
 
+  // std::vector<std::thread> threads;
   for (auto segment : chunks(data, subtree_width)) {
-    auto segment_root = reduce_segment(segment);
-    roots.emplace_back(segment_root);
+    // threads.emplace_back(&tree_constructor::reduce_segment<decltype(segment)>, this, segment);
+    reduce_segment(segment);
   }
+  
+  // for (auto& thread : threads) thread.join();
+
   return reduce_roots();
 }

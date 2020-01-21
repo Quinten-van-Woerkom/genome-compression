@@ -33,7 +33,7 @@ int main(int argc, char* argv[]) {
   std::cout << "Done!\n" << std::flush;
 
   std::cout << "Sorting pointers based on frequency\n";
-  compressed.frequency_sort();
+  compressed.sort_tree();
 
   auto compressed_size = compressed.bytes();
   auto compressed_width = compressed.width();
