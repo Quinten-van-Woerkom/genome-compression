@@ -19,7 +19,8 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
 
   // Make sure that we do not allocate an unnecessarily big buffer.
   const auto file_size = std::filesystem::file_size(path);
-  if (file_size < buffer_size*(dna::size()/2))
+  const auto buffer_bytes = buffer_size*(dna::size()/2);
+  if (file_size < buffer_bytes)
     buffer_size = file_size;
 
   buffer.resize(buffer_size);
@@ -27,7 +28,9 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
   char_buffer.resize(buffer_size*dna::size() + 1);
   load_buffer();
   std::swap(background_buffer, buffer);
-  background_loader = std::thread{&fasta_reader::load_buffer, this};
+
+  if (file_size >= buffer_bytes)
+    background_loader = std::thread{&fasta_reader::load_buffer, this};
 }
 
 /**
