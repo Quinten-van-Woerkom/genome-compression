@@ -11,6 +11,9 @@
 
 namespace fs = std::filesystem;
 
+/******************************************************************************
+ * Helper functions for FASTA parsing.
+ */
 bool valid_nac(char code) {
   code = std::toupper(code);
   return code == 'A' || code == 'C' || code == 'G' ||code == 'T'
@@ -76,7 +79,7 @@ constexpr auto from_nac(nac code) -> char {
 dna::dna(const std::string_view strand) {
   assert(strand.size() == length);
   for (auto i = 0u; i < length; ++i)
-    set_nucleotide(i, strand[i]);
+    set(i, strand[i]);
 }
 
 dna::dna(unsigned long long value) noexcept : nucleotides{value} {}
@@ -184,12 +187,12 @@ auto dna::nucleotide(std::size_t index) const -> char {
  *  Internal helper function that sets the nucleotide located at <index> to
  *  <nucleotide>.
  */
-void dna::set_nucleotide(std::size_t index, char nucleotide) {
+void dna::set(std::size_t index, char nucleotide) {
   auto code = to_nac(nucleotide);
-  set_nucleotide(index, code);
+  set(index, code);
 }
 
-void dna::set_nucleotide(std::size_t index, nac code) {
+void dna::set(std::size_t index, nac code) {
   assert(index < length);
   const auto offset = 4*index;
   nucleotides &= ~(0xfull << offset);

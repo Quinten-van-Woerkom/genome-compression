@@ -12,6 +12,11 @@
 
 #include "robin_hood.h"
 
+/******************************************************************************
+ * FASTA nucleic acid codes
+ *  Bit representations were chosen to allow certain bit twiddling hacks.
+ *  Measurement shows that this does significantly improve performance.
+ */
 enum class nac : char {
   // Pairs of transpose base pairs
   A = 0b0001, T = 0b1000,
@@ -26,7 +31,11 @@ enum class nac : char {
   N = 0b0110, Indeterminate = 0b1111
 };
 
-// DNA strand of predetermined size
+/******************************************************************************
+ * FASTA-compliant DNA strand
+ *  Only Uracil is neglected, as it is not present in DNA; all other FASTA
+ *  codes are supported.
+ */
 class dna {
   static constexpr std::size_t length = 16; // Length of a single strand
 public:
@@ -56,8 +65,8 @@ public:
   auto to_ullong() const noexcept { return nucleotides; }
 
 private:
-  void set_nucleotide(std::size_t index, char nucleotide);
-  void set_nucleotide(std::size_t index, nac code);
+  void set(std::size_t index, char nucleotide);
+  void set(std::size_t index, nac code);
 
   std::uint64_t nucleotides : 4*length;
 };

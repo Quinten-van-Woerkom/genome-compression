@@ -289,9 +289,7 @@ auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer
 template<typename Iterable>
 auto tree_constructor::reduce_segment(Iterable&& segment) -> pointer {
   auto layer = reduce_leaves(segment);
-  auto index = 1u;
-
-  for (; layer.size() > 1 || index < nodes.size(); ++index)
+  for (auto index = 1u; layer.size() > 1 || index < nodes.size(); ++index)
     layer = reduce_nodes(layer, index);
 
   return layer.front();
@@ -304,7 +302,7 @@ auto tree_constructor::reduce_segment(Iterable&& segment) -> pointer {
  */
 template<typename Iterable>
 auto tree_constructor::reduce(Iterable&& data) -> pointer {
-  constexpr auto subtree_depth = 10;
+  constexpr auto subtree_depth = 20;
   constexpr auto subtree_width = (1u<<subtree_depth);
 
   for (auto segment : chunks(data, subtree_width)) {

@@ -243,7 +243,7 @@ auto shared_tree::children(std::size_t layer, pointer pointer) const -> std::siz
 
 /**
  * Indexing operator into the tree.
- * It is advised not to use this for iteration, as the induces overhead
+ * It is advised not to use this for iteration, as the induced overhead
  * compared to the implemented iterator is significant.
  */
 auto shared_tree::operator[](std::uint64_t index) const -> dna {
@@ -343,59 +343,67 @@ void shared_tree::store_histogram(std::filesystem::path path) const {
  * This further improves the effectiveness of pointer compression.
  */
 void shared_tree::frequency_sort() {
-  { // Leaf nodes are treated separately
-    auto frequencies = histogram(0);
-    auto old_indices = std::vector<std::size_t>(frequencies.size());
-    std::iota(old_indices.begin(), old_indices.end(), 0);
+  // Increasing vector of indices.
+  auto iota = [](auto size) {
+    auto vector = std::vector<std::size_t>(size);
+    std::iota(vector.begin(), vector.end(), 0);
+    return vector;
+  };
 
-    std::stable_sort(old_indices.begin(), old_indices.end(),
+  // Inverts a vector of indices, so that the value i located at j
+  // becomes the value of j located at i.
+  auto invert_indices = [](const auto& indices) {
+    auto inverted = indices;
+    for (auto i = 0u; i < indices.size(); ++i)
+      inverted[indices[i]] = i;
+    return inverted;
+  };
+
+  // Returns the child layer, but then reordered so that child i is now located at
+  // index indices[i].
+  auto reorder_children = [](const auto& children, const auto& indices) {
+    auto reordered = children;
+    for (auto i = 0u; i < indices.size(); ++i)
+      reordered[indices[i]] = children[i];
+    return reordered;
+  };
+
+  // Rewires a pointer to point to the same child, but then sorted.
+  auto rewire_pointer = [](auto old, const auto& indices) {
+    if (old.empty()) return old;
+    const auto index = indices[old.index()];
+    const auto mirror = old.is_mirrored();
+    const auto transpose = old.is_transposed();
+    const auto invariant = old.is_invariant();
+    return pointer{index, mirror, transpose, invariant};
+  };
+
+  // Rewires a node to point to its children, but sorted.
+  auto rewire_node = [&](auto old, const auto& indices) {
+    auto left = rewire_pointer(old.left(), indices);
+    auto right = rewire_pointer(old.right(), indices);
+    return node{left, right};
+  };
+
+  // Sorts a layer based on the frequency of reference.
+  // Rewires parents to connect to the same children.
+  auto sort_layer = [&](auto& children, auto& parents, auto index) {
+    auto frequencies = histogram(index);
+    auto indices = iota(frequencies.size());
+
+    std::stable_sort(indices.begin(), indices.end(),
       [&](auto a, auto b) { return frequencies[a] > frequencies[b]; });
 
-    auto new_leaves = std::vector<dna>(leaves.size());
-    auto new_indices = std::vector<std::size_t>(old_indices.size());
+    indices = invert_indices(indices);
+    children = reorder_children(children, indices);
 
-    for (auto i = 0u; i < old_indices.size(); ++i)
-      new_indices[old_indices[i]] = i;
+    std::transform(parents.begin(), parents.end(), parents.begin(),
+      [&](auto old) { return rewire_node(old, indices); });
+  };
 
-    for (auto i = 0u; i < old_indices.size(); ++i)
-      new_leaves[new_indices[i]] = leaves[i];
-    leaves = std::move(new_leaves);
-
-    auto update = [&](auto old) {
-      if (old.empty()) return old;
-      else return pointer{new_indices[old.index()], old.is_mirrored(), old.is_transposed(), old.is_invariant()};
-    };
-
-    std::transform(nodes[0].begin(), nodes[0].end(), nodes[0].begin(),
-      [&](auto old) { return node{update(old.left()), update(old.right())}; });
-  }
-
-  for (auto layer = 1u; layer < nodes.size(); ++layer) {
-    auto frequencies = histogram(layer);
-    auto old_indices = std::vector<std::size_t>(frequencies.size());
-    std::iota(old_indices.begin(), old_indices.end(), 0);
-    
-    std::stable_sort(old_indices.begin(), old_indices.end(),
-      [&](auto a, auto b) { return frequencies[a] > frequencies[b]; });
-    
-    auto new_nodes = nodes[layer-1];
-    auto new_indices = old_indices;
-
-    for (auto i = 0u; i < old_indices.size(); ++i)
-      new_indices[old_indices[i]] = i;
-
-    for (auto i = 0u; i < new_indices.size(); ++i)
-      new_nodes[new_indices[i]] = nodes[layer-1][i];
-    nodes[layer-1] = std::move(new_nodes);
-
-    auto update = [&](auto old) {
-      if (old.empty()) return old;
-      else return pointer{new_indices[old.index()], old.is_mirrored(), old.is_transposed(), old.is_transposed()};
-    };
-
-    std::transform(nodes[layer].begin(), nodes[layer].end(), nodes[layer].begin(),
-      [&](auto old) { return node{update(old.left()), update(old.right())}; });
-  }
+  sort_layer(leaves, nodes[0], 0);
+  for (auto layer = 1u; layer < nodes.size(); ++layer)
+    sort_layer(nodes[layer-1], nodes[layer], layer);
 }
 
 /**
