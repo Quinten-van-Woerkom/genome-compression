@@ -14,7 +14,7 @@ OBJS=$(subst .cpp,.o,$(SRCS))
 
 release: ADDED_CPPFLAGS=-O3 -flto=thin -DNDEBUG
 
-all release: compress test local_alignment
+all release: compress test
 
 test: $(SRCS) $(TEST)
 	$(CXX) -o $@ $(TEST) $(SRCS) $(LDLIBS) $(LDFLAGS) $(CPPFLAGS) $(ADDED_CPPFLAGS)
