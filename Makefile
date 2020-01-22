@@ -12,7 +12,9 @@ JUMP=local_alignment.cpp
 SRCS=src/dna.cpp src/fasta_reader.cpp src/shared_tree.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
-release: ADDED_CPPFLAGS=-O3 -flto=thin -DNDEBUG
+DNA_STRAND_SIZE=8
+
+release: ADDED_CPPFLAGS=-O3 -flto=thin -DNDEBUG -DDNA_STRAND_SIZE=$(DNA_STRAND_SIZE)
 
 all release: compress test
 
