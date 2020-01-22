@@ -36,7 +36,7 @@ auto test_dna() -> int {
   auto a = dna{std::string_view{"AAAAAAAAAAAAAAAA"}.substr(0, dna::size())};
   auto t = dna{std::string_view{"TTTTTTTTTTTTTTTT"}.substr(0, dna::size())};
   auto p = dna{std::string_view{"ACTGACTGACTGACTG"}.substr(0, dna::size())};
-  auto q = dna{std::string_view{"GTCAGTCAGTCAGTCA"}.substr(0, dna::size())};
+  auto q = dna{std::string_view{"GTCAGTCAGTCAGTCA"}.substr(16-dna::size(), dna::size())};
 
   expects(a.transposed() == t, "A should complement T: ", a.transposed(), " != ", t);
   expects(p.mirrored() == q, "Mirroring DNA strings should be exactly reversed: ", p.mirrored(), " != ", q);
@@ -339,8 +339,6 @@ auto test_tree_iteration() -> int {
   TEST_START("Tree iteration");
 
   auto path = "data/chmpxx";
-  // auto path = "data/hehcmv";
-  // auto path = "../GRCm38.fna";
   auto file = fasta_reader{path};
   auto compressed = shared_tree{path};
   auto size = compressed.width();
