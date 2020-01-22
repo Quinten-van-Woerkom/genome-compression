@@ -338,16 +338,16 @@ auto test_frequency_sort() -> int {
 auto test_tree_iteration() -> int {
   TEST_START("Tree iteration");
 
-  // auto path = "data/chmpxx";
+  auto path = "data/chmpxx";
   // auto path = "data/hehcmv";
-  auto path = "../GRCm38.fna";
-  auto file = fasta_reader{path, 32};
+  // auto path = "../GRCm38.fna";
+  auto file = fasta_reader{path};
   auto compressed = shared_tree{path};
   auto size = compressed.width();
 
   auto i = 0;
   auto j = 0;
-  auto data = std::vector<dna>(32);
+  auto data = std::vector<dna>();
   file.read_into(data);
   for (const auto c : compressed) {
     if (i >= data.size()) {
@@ -364,16 +364,16 @@ auto test_tree_iteration() -> int {
     ++j;
   }
   
-  // i = 0;
-  // for (const auto c : compressed) {
-  //   expects(
-  //     compressed[i] == c,
-  //     "compressed[i] != compressed[i] for i = ", i, " out of ", size-1, '\n',
-  //     "\tcompressed[i]\t= ", compressed[i], '\n',
-  //     "\tcompressed[i]\t= ", c
-  //   );
-  //   ++i;
-  // }
+  i = 0;
+  for (const auto c : compressed) {
+    expects(
+      compressed[i] == c,
+      "compressed[i] != compressed[i] for i = ", i, " out of ", size-1, '\n',
+      "\tcompressed[i]\t= ", compressed[i], '\n',
+      "\tcompressed[i]\t= ", c
+    );
+    ++i;
+  }
 
   TEST_END("Tree iteration");
 }
