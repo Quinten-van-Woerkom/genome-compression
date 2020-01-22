@@ -191,3 +191,22 @@ void binary_read(std::istream& is, T& value) {
     value |= ((T)byte << T(8*i));
   }
 }
+
+
+/******************************************************************************
+ * Formats a size in bytes into the appropriate number of B, KB, MB, etc.
+ */
+template<typename T>
+auto bytes_to_string(T bytes) {
+  constexpr auto suffix = std::array{"B", "KB", "MB", "GB", "TB", "PB", "EB"};
+  auto size = static_cast<double>(bytes);
+  auto order = 0u;
+  while (size >= 1000.0 && order < suffix.size()-1) {
+    size /= 1000.0;
+    ++order;
+  }
+  auto stream = std::stringstream{};
+  stream.precision(3);
+  stream << size << ' ' << suffix[order];
+  return stream.str();
+}

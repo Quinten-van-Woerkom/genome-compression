@@ -191,11 +191,13 @@ auto node::deserialize(std::istream& is) -> node {
 shared_tree::shared_tree(fasta_reader file) {
   auto constructor = tree_constructor{*this};
   root = constructor.reduce(file);
+  nodes.reserve(64);
 }
 
 shared_tree::shared_tree(std::vector<dna>& data) {
   auto constructor = tree_constructor{*this};
   root = constructor.reduce(data);
+  nodes.reserve(64);
 }
 
 /**
@@ -588,7 +590,9 @@ void shared_tree::iterator::next_leaf() {
  *  Contains the maps used to link nodes to pointers or leaves.
  */
 tree_constructor::tree_constructor(shared_tree& parent)
-: parent{parent} {}
+: parent{parent} {
+  nodes.reserve(64);
+}
 
 /**
  * Checks if a leaf already exists in the tree, and if that is not the case,
@@ -683,19 +687,6 @@ auto tree_constructor::reduce_nodes(const std::vector<pointer>& iterable, std::s
  * which is also reduced to complete the tree.
  */
 auto tree_constructor::reduce(fasta_reader& file) -> pointer {
-  // std::vector<std::thread> threads;
-
-  // while (!file.eof()) {
-  //   std::cout << "Reducing segment...\n";
-  //   std::vector<dna> buffer;
-  //   file.read_into(buffer);
-  //   threads.emplace_back(&tree_constructor::reduce_segment<std::vector<dna>>, this, std::move(buffer));
-  // }
-
-  // for (auto& thread : threads) {
-  //   if (thread.joinable()) thread.join();
-  // }
-
   while (!file.eof()) {
     std::vector<dna> buffer;
     file.read_into(buffer);

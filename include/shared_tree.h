@@ -269,6 +269,7 @@ private:
   std::array<std::mutex, 64> nodes_mutex; // Allows for 64 layers at a time, should be sufficient for now.
   std::mutex leaves_mutex;
   std::mutex roots_mutex;
+  std::mutex general_mutex;
 };
 
 /**
@@ -283,7 +284,6 @@ auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer
   if (parent.depth() == 1) {
     parent.add_layer();
     nodes.emplace_back();
-    // nodes_mutex.emplace_back();
   }
 
   auto current_layer_lock = std::lock_guard{leaves_mutex};

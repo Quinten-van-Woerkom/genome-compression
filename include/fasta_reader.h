@@ -9,6 +9,7 @@
 #include <fstream>
 #include <filesystem>
 #include <iostream>
+#include <mutex>
 #include <string_view>
 #include <thread>
 #include <vector>
@@ -21,7 +22,7 @@ public:
 
   fasta_reader(std::filesystem::path path, std::size_t buffer_size = (1<<22));
   fasta_reader(const fasta_reader&) = delete;
-  fasta_reader(fasta_reader&&) = default;
+  fasta_reader(fasta_reader&&) = delete;
 
   ~fasta_reader() {
     if (background_loader.joinable()) background_loader.join();
