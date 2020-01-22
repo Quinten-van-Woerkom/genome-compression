@@ -11,7 +11,7 @@
 #include <limits>
 
 fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
-  : file{path}, path{path}, index{0} {
+  : file{path}, path{path} {
   if (!file.is_open()) {
     std::cerr << "Unable to open file, aborting...\n";
     exit(1);
@@ -19,47 +19,26 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
 
   // Make sure that we do not allocate an unnecessarily big buffer.
   const auto file_size = std::filesystem::file_size(path);
-  const auto buffer_bytes = buffer_size*(dna::size()/2);
-  if (file_size < buffer_bytes)
-    buffer_size = file_size;
+  const auto file_strands = file_size/(dna::size()/2)+1;
+  if (file_strands < buffer_size)
+    buffer_size = file_strands;
 
   buffer.resize(buffer_size);
-  background_buffer.resize(buffer_size);
   char_buffer.resize(buffer_size*dna::size() + 1);
-  load_buffer();
-  std::swap(background_buffer, buffer);
 
-  if (file_size >= buffer_bytes)
+  if (file_strands >= buffer_size)
     background_loader = std::thread{&fasta_reader::load_buffer, this};
-}
-
-/**
- *  Advances the reader towards the next meaningful FASTA symbol.
- */
-void fasta_reader::next_symbol() {
-  ++index;
-  if (index >= buffer.size()) {
-    if (!file.eof()) swap_buffers();
-    else end_of_file = true;
-  }
-}
-
-/**
- * Waits until the background thread has finished loading the next buffer, and
- * then swaps it with the current buffer, afterwards dispatching the background
- * thread to load the next buffer.
- */
-void fasta_reader::swap_buffers() {
-  if (background_loader.joinable()) background_loader.join();
-  std::swap(background_buffer, buffer);
-  index = 0;
-  background_loader = std::thread{&fasta_reader::load_buffer, this};
 }
 
 /**
  *  Loads the next data in the FASTA file into the background buffer.
  */
 void fasta_reader::load_buffer() {
+  if (file.eof()) {
+    end_of_file = true;
+    return;
+  }
+
   auto position = 0lu;
   while (position < char_buffer.size()-1) {
     file.clear();
@@ -74,14 +53,14 @@ void fasta_reader::load_buffer() {
     position += size;
     
     if (file.eof()) {
-      char_buffer.resize(position+1 - (position+1)%dna::size());
-      background_buffer.resize(char_buffer.size() / dna::size());
+      char_buffer.resize((position+1)/dna::size() * dna::size());
+      buffer.resize(char_buffer.size() / dna::size());
       break;
     }
   }
 
-  for (auto i = 0u; i < background_buffer.size(); ++i)
-    background_buffer[i] = dna{std::string_view{&char_buffer[i*dna::size()], dna::size()}};
+  for (auto i = 0u; i < buffer.size(); ++i)
+    buffer[i] = dna{std::string_view{&char_buffer[i*dna::size()], dna::size()}};
 }
 
 /**
@@ -93,6 +72,25 @@ auto fasta_reader::size() -> std::size_t {
   return std::filesystem::file_size(path);
 }
 
+/**
+ * Reads the data currently in the buffer into the vector passed.
+ * Does this through a move swap, so that the data itself is not actually read.
+ * Returns true if the read was successful, false otherwise.
+ */
+bool fasta_reader::read_into(std::vector<dna>& vector) {
+  if (background_loader.joinable()) background_loader.join();
+  std::swap(buffer, vector);
+
+  if (!file.eof()) {
+    buffer.resize(vector.size());
+    background_loader = std::thread{&fasta_reader::load_buffer, this};
+  } else {
+    end_of_file = true;
+  }
+
+  return vector.size() != 0;
+}
+
 auto read_genome(const std::filesystem::path path) -> std::vector<dna> {
   if (!std::filesystem::is_regular_file(path)) {
     std::cerr << "Non-existent path, aborting...\n";
@@ -100,9 +98,12 @@ auto read_genome(const std::filesystem::path path) -> std::vector<dna> {
   }
 
   auto result = std::vector<dna>{};
+  auto buffer = std::vector<dna>{};
   auto file = fasta_reader{path};
-  for (const auto&& element : file)
-    result.emplace_back(element);
+  while (file.read_into(buffer)) {
+    for (const auto& element : buffer)
+      result.emplace_back(element);
+  }
 
   return result;
 }

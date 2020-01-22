@@ -632,7 +632,7 @@ auto tree_constructor::emplace_node(std::size_t layer, pointer left, pointer rig
   const auto insertion = nodes[layer].emplace(created_node, parent.node_count(layer));
   const auto canonical_node = (*insertion.first).first;
   const auto index = (*insertion.first).second;
-  const auto invariant = (left.is_invariant() && right.is_invariant()) || (left == right.mirrored());
+  const auto invariant = (left == right.mirrored());
 
   if (insertion.second) {
     parent.emplace_node(layer, created_node);
@@ -657,20 +657,65 @@ auto tree_constructor::reduce_roots() -> pointer {
  * contains, and emplacing those nodes in the correct layers and maps, if
  * necessary.
  */
-auto tree_constructor::reduce_nodes(std::vector<pointer>& iterable, std::size_t index) -> std::vector<pointer> {
+auto tree_constructor::reduce_nodes(const std::vector<pointer>& iterable, std::size_t index) -> std::vector<pointer> {
   auto layer = std::vector<pointer>{};
   layer.reserve(iterable.size()/2 + iterable.size()%2);
 
   if (parent.depth()-2 < index) {
     parent.add_layer();
     nodes.emplace_back();
-    nodes_mutex.emplace_back();
+    // nodes_mutex.emplace_back();
   }
 
+  auto current_layer_lock = std::lock_guard{nodes_mutex[index]};
+  auto next_layer_lock = std::lock_guard{nodes_mutex[index+1]};
   foreach_pair(iterable,
     [&](auto left, auto right) { layer.emplace_back(emplace_node(index, left, right)); },
     [&](auto last) { layer.emplace_back(emplace_node(index, last)); }
   );
 
   return layer;
+}
+
+/**
+ * Reduces data read from a file into segments, each of which is fully reduced.
+ * The resulting subtree roots are then accumulated into a single top layer
+ * which is also reduced to complete the tree.
+ */
+auto tree_constructor::reduce(fasta_reader& file) -> pointer {
+  // std::vector<std::thread> threads;
+
+  // while (!file.eof()) {
+  //   std::cout << "Reducing segment...\n";
+  //   std::vector<dna> buffer;
+  //   file.read_into(buffer);
+  //   threads.emplace_back(&tree_constructor::reduce_segment<std::vector<dna>>, this, std::move(buffer));
+  // }
+
+  // for (auto& thread : threads) {
+  //   if (thread.joinable()) thread.join();
+  // }
+
+  while (!file.eof()) {
+    std::vector<dna> buffer;
+    file.read_into(buffer);
+    reduce_segment(buffer);
+  }
+
+  return reduce_roots();
+}
+
+/**
+ * Reduces the data by dividing it into segments, each of which is fully
+ * reduced. The resulting tree roots are then also reduced to obtain the
+ * final tree representation.
+ */
+auto tree_constructor::reduce(const std::vector<dna>& data) -> pointer {
+  constexpr auto subtree_depth = 25;
+  constexpr auto subtree_width = (1u<<subtree_depth);
+
+  for (auto segment : chunks(data, subtree_width))
+    reduce_segment(segment);
+  
+  return reduce_roots();
 }

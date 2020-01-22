@@ -248,24 +248,25 @@ public:
   auto emplace_leaves(dna last) -> pointer;
   auto emplace_leaf(dna leaf) -> pointer;
 
-  auto reduce_nodes(std::vector<pointer>& segment, std::size_t index) -> std::vector<pointer>;
-  auto reduce_roots() -> pointer;
-
   template<typename Iterable>
   auto reduce_leaves(Iterable&& layer) -> std::vector<pointer>;
+  auto reduce_nodes(const std::vector<pointer>& segment, std::size_t index) -> std::vector<pointer>;
+  auto reduce_roots() -> pointer;
+  auto reduce(const std::vector<dna>& data) -> pointer;
+  auto reduce(fasta_reader& file) -> pointer;
 
   template<typename Iterable>
   void reduce_segment(Iterable&& layer);
 
-  template<typename Iterable>
-  auto reduce(Iterable&& data) -> pointer;
+  // template<typename Iterable>
+  // auto reduce(Iterable&& data) -> pointer;
 
 private:
   shared_tree& parent;
   std::vector<hash_map<node>> nodes;
   hash_map<dna> leaves;
   std::vector<pointer> roots;
-  std::deque<std::mutex> nodes_mutex;
+  std::array<std::mutex, 64> nodes_mutex; // Allows for 64 layers at a time, should be sufficient for now.
   std::mutex leaves_mutex;
   std::mutex roots_mutex;
 };
@@ -282,9 +283,11 @@ auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer
   if (parent.depth() == 1) {
     parent.add_layer();
     nodes.emplace_back();
-    nodes_mutex.emplace_back();
+    // nodes_mutex.emplace_back();
   }
 
+  auto current_layer_lock = std::lock_guard{leaves_mutex};
+  auto next_layer_lock = std::lock_guard{nodes_mutex[0]};
   foreach_pair(iterable,
     [&](auto left, auto right) { layer.emplace_back(emplace_leaves(left, right)); },
     [&](auto last) { layer.emplace_back(emplace_leaves(last)); }
@@ -297,34 +300,11 @@ auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer
  * tree according to canonical representation.
  */
 template<typename Iterable>
-void tree_constructor::reduce_segment(Iterable&& segment) {
-  std::vector<pointer> layer;
-  
-  layer = reduce_leaves(segment);
+void tree_constructor::reduce_segment(Iterable&& segment) {  
+  auto layer = reduce_leaves(segment);
   for (auto index = 1u; layer.size() > 1 || index < nodes.size(); ++index)
     layer = reduce_nodes(layer, index);
 
   std::lock_guard lock_roots{roots_mutex};
   roots.emplace_back(layer.front());
-}
-
-/**
- * Reduces the data by dividing it into segments, each of which is fully
- * reduced. The resulting tree roots are then also reduced to obtain the
- * final tree representation.
- */
-template<typename Iterable>
-auto tree_constructor::reduce(Iterable&& data) -> pointer {
-  constexpr auto subtree_depth = 25;
-  constexpr auto subtree_width = (1u<<subtree_depth);
-
-  // std::vector<std::thread> threads;
-  for (auto segment : chunks(data, subtree_width)) {
-    // threads.emplace_back(&tree_constructor::reduce_segment<decltype(segment)>, this, segment);
-    reduce_segment(segment);
-  }
-  
-  // for (auto& thread : threads) thread.join();
-
-  return reduce_roots();
 }

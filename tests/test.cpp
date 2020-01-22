@@ -80,7 +80,7 @@ auto test_file_reader() -> int {
 
   auto path = "data/chmpxx";
   auto size = std::filesystem::file_size(path);
-  auto buffered = fasta_reader{path};
+  auto buffered = fasta_reader{path, size/2 + 38};
   auto direct = std::vector<std::array<char, dna::size()>>(size/dna::size());
   auto file = std::ifstream{path, std::ios::binary};
 
@@ -94,15 +94,18 @@ auto test_file_reader() -> int {
   );
 
   auto i = 0u;
-  for (auto b : buffered) {
-    auto d = std::string_view{direct[i].data(), direct[i].size()};
-    expects(
-      b == d,
-      "buffered[i] != direct[i] for i = ", i, " out of ", direct.size() - 1, '\n',
-      "\tbuffered[i]\t= ", b, '\n',
-      "\tdirect[i]\t= ", d
-    );
-    ++i;
+  std::vector<dna> buffer;
+  while (buffered.read_into(buffer)) {
+    for (auto b : buffer) {
+      auto d = std::string_view{direct[i].data(), direct[i].size()};
+      expects(
+        b == d,
+        "buffered[i] != direct[i] for i = ", i, " out of ", direct.size() - 1, '\n',
+        "\tbuffered[i]\t= ", b, '\n',
+        "\tdirect[i]\t= ", d
+      );
+      ++i;
+    }
   }
 
   expects(
@@ -335,31 +338,42 @@ auto test_frequency_sort() -> int {
 auto test_tree_iteration() -> int {
   TEST_START("Tree iteration");
 
-  auto path = "data/chmpxx";
-  auto data = read_genome(path);
+  // auto path = "data/chmpxx";
+  // auto path = "data/hehcmv";
+  auto path = "../GRCm38.fna";
+  auto file = fasta_reader{path, 32};
   auto compressed = shared_tree{path};
+  auto size = compressed.width();
 
   auto i = 0;
+  auto j = 0;
+  auto data = std::vector<dna>(32);
+  file.read_into(data);
   for (const auto c : compressed) {
+    if (i >= data.size()) {
+      file.read_into(data);
+      i = 0;
+    }
     expects(
       data[i] == c,
-      "data[i] != compressed[i] for i = ", i, " out of ", data.size() - 1, '\n',
+      "data[i] != compressed[i] for i = ", j, " out of ", size-1, '\n',
       "\tdata[i]\t\t= ", data[i], '\n',
       "\tcompressed[i]\t= ", c
     );
     ++i;
+    ++j;
   }
-
-  i = 0;
-  for (const auto c : compressed) {
-    expects(
-      compressed[i] == c,
-      "compressed[i] != compressed[i] for i = ", i, " out of ", data.size() - 1, '\n',
-      "\tcompressed[i]\t= ", compressed[i], '\n',
-      "\tcompressed[i]\t= ", c
-    );
-    ++i;
-  }
+  
+  // i = 0;
+  // for (const auto c : compressed) {
+  //   expects(
+  //     compressed[i] == c,
+  //     "compressed[i] != compressed[i] for i = ", i, " out of ", size-1, '\n',
+  //     "\tcompressed[i]\t= ", compressed[i], '\n',
+  //     "\tcompressed[i]\t= ", c
+  //   );
+  //   ++i;
+  // }
 
   TEST_END("Tree iteration");
 }

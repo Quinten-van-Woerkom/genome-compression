@@ -28,43 +28,17 @@ public:
   }
 
   auto eof() const -> bool { return end_of_file; }
-  auto current_symbol() -> dna { return buffer[index]; }
-  void next_symbol();
   void load_buffer();
   void swap_buffers();
+  auto read_into(std::vector<dna>& vector) -> bool;
 
   auto size() -> std::size_t;
 
-  class iterator {
-    public:
-      iterator(fasta_reader& parent)
-        : parent{parent} {}
-
-      auto operator*() const -> dna { return parent.current_symbol(); }
-      auto operator==(const iterator&) const -> bool { return parent.eof(); } // Hackish implementation but it works
-      auto operator!=(const iterator&) const -> bool { return !parent.eof(); }
-
-      auto& operator++() {
-        parent.next_symbol();
-        return *this;
-      }
-
-    private:
-      fasta_reader& parent;
-  };
-
-  using const_iterator = iterator;
-
-  auto begin() { return iterator{*this}; }
-  auto end() { return iterator{*this}; }
-
 private:
-  std::vector<dna> background_buffer;
   std::vector<dna> buffer;
   std::vector<char> char_buffer;
   std::ifstream file;
   std::filesystem::path path;
-  std::size_t index;
   bool end_of_file = false;
   std::thread background_loader;
 };

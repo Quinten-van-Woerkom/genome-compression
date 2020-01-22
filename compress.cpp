@@ -53,7 +53,8 @@ int main(int argc, char* argv[]) {
     << "File size: " << file_size << " bytes\n"
     << "Compressed size: " << compressed_size << " bytes (" << compressed.node_count() << " nodes, " << compressed.leaf_count() << " leaves)\n"
     << "Compression ratio: " << double(compressed_size)/double(file_size) << '\n'
-    << "Time: " << time.count() << "ms\n";
+    << "Time: " << time.count() << "ms\n"
+    << "Last element: " << compressed[compressed_width-1] << '\n';
 
   return 0;
 }
