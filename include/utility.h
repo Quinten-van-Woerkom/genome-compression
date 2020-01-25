@@ -6,6 +6,7 @@
 #pragma once
 
 #include <iostream>
+#include <sstream>
 #include <tuple>
 
 /******************************************************************************
@@ -209,4 +210,26 @@ auto bytes_to_string(T bytes) {
   stream.precision(3);
   stream << size << ' ' << suffix[order];
   return stream.str();
+}
+
+
+/******************************************************************************
+ * Displays a progress bar filled to the given percentage.
+ */
+inline auto progress_bar(std::string_view name, unsigned current, unsigned end) {
+  const auto percentage = double(current)/double(end);
+  const auto bar_width = 60;
+  const auto progress = unsigned(percentage*bar_width);
+  auto output = std::stringstream{};
+  output << '\r' << name << ": [";
+  for (auto i = 0u; i < bar_width; ++i) {
+    if (i < progress) output << '#';
+    else output << ' ';
+  }
+  output << "] " << unsigned(percentage*100) << '%';
+  return output.str();
+}
+
+inline auto spaces(unsigned length) {
+  return std::string(length, ' ');
 }

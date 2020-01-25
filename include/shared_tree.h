@@ -36,8 +36,6 @@
 class pointer {
 public:
   static constexpr auto address_bits = std::array{4, 12, 20, 28};
-  static constexpr auto address_space = std::array{1ull << address_bits[0], 1ull << address_bits[1], 1ull << address_bits[2], 1ull << address_bits[3]};
-  static constexpr auto address_start = std::array{0ull, address_space[0], address_space[0] + address_space[1], address_space[0] + address_space[1] + address_space[2]};
 
   pointer(std::nullptr_t = nullptr) noexcept;
   pointer(const pointer& other, bool mirror = false, bool transpose = false) noexcept;
@@ -54,7 +52,7 @@ public:
 
   bool operator==(const pointer& other) const noexcept { return to_ulong() == other.to_ulong(); }
   bool operator!=(const pointer& other) const noexcept { return to_ulong() != other.to_ulong(); }
-  bool operator<(const pointer& other) const noexcept { return canonical() < other.canonical(); }
+  bool operator<(const pointer& other) const noexcept { return to_ulong() < other.to_ulong(); }
   auto to_ulong() const noexcept -> unsigned long;
   operator bool() const noexcept { return *this != nullptr; }
 
@@ -75,13 +73,22 @@ private:
   std::uint32_t data : address_bits.back() + 1;
   bool mirror : 1;
   bool transpose : 1;
-  bool invariant : 1; // Only used in construction, not actually stored to disk
+  bool invariant : 1;
 };
 
 inline auto& operator<<(std::ostream& os, const pointer& pointer) {
   if (pointer.empty()) return os << "empty";
   else return os << '(' << pointer.index() << ": " << pointer.is_mirrored()
     << pointer.is_transposed() << pointer.is_invariant() << ')';
+}
+
+namespace std {
+  template<> struct hash<pointer> {
+    auto operator()(const pointer& p) const noexcept -> std::size_t {
+      // return std::hash<unsigned long>()(p.to_ulong());
+      return robin_hood::hash<unsigned long>()(p.to_ulong());
+    }
+  };
 }
 
 /****************************************************************************
@@ -130,15 +137,11 @@ inline auto& operator<<(std::ostream& os, const node& n) {
   return os << "node<" << n.left() << ", " << n.right() << '>';
 }
 
-
-/******************************************************************************
- * std::hash<> specialisation
- *  Required for usage of nodes in a hashtable.
- */
 namespace std {
   template<> struct hash<node> {
     auto operator()(const node& n) const noexcept -> std::size_t {
-      return detail::hash(n.left().to_ulong(), n.right().to_ulong());
+      auto hash = std::hash<pointer>();
+      return detail::hash(hash(n.left()), hash(n.right()));
     }
   };
 }
@@ -155,8 +158,8 @@ public:
   shared_tree(std::filesystem::path path)
   : shared_tree{fasta_reader{path}} {};
 
-  shared_tree(fasta_reader file);
-  shared_tree(std::vector<dna>& data);
+  shared_tree(fasta_reader file, bool verbose = false);
+  shared_tree(std::vector<dna>& data, bool verbose = false);
 
   auto depth() const { return nodes.size() + 1; }
   auto width() const { assert(nodes.back().size() == 1); return children(nodes.size()-1, root); }
@@ -180,7 +183,7 @@ public:
   void rewire_nodes(std::size_t layer, const std::vector<std::size_t>& indices);
   void sort_leaves();
   void sort_nodes(std::size_t layer);
-  void sort_tree();
+  void sort_tree(bool verbose = false);
 
   auto bytes() const noexcept -> std::size_t;
   void serialize(std::ostream& os) const;
@@ -243,10 +246,10 @@ class tree_constructor {
 public:
   // Parallel flat hash map offers better performance guarantees than robin hood.
   // In addition, it has concurrency capabilities that might be useful later.
-  // // template<typename T>
-  // // using hash_map = phmap::parallel_flat_hash_map<T, std::size_t>;
   template<typename T>
-  using hash_map = robin_hood::unordered_flat_map<T, std::size_t>;
+  using hash_map = phmap::parallel_flat_hash_map<T, std::size_t>;
+  // template<typename T>
+  // using hash_map = robin_hood::unordered_flat_map<T, std::size_t>;
 
   tree_constructor(shared_tree& parent);
 
@@ -258,15 +261,12 @@ public:
   template<typename Iterable>
   auto reduce_leaves(Iterable&& layer) -> std::vector<pointer>;
   auto reduce_nodes(const std::vector<pointer>& segment, std::size_t index) -> std::vector<pointer>;
-  auto reduce_roots() -> pointer;
-  auto reduce(const std::vector<dna>& data) -> pointer;
-  auto reduce(fasta_reader& file) -> pointer;
+  auto reduce_roots(bool verbose = false) -> pointer;
+  auto reduce(const std::vector<dna>& data, bool verbose = false) -> pointer;
+  auto reduce(fasta_reader& file, bool verbose = false) -> pointer;
 
   template<typename Iterable>
   void reduce_segment(Iterable&& layer);
-
-  // template<typename Iterable>
-  // auto reduce(Iterable&& data) -> pointer;
 
 private:
   shared_tree& parent;
@@ -303,11 +303,14 @@ auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer
  * tree according to canonical representation.
  */
 template<typename Iterable>
-void tree_constructor::reduce_segment(Iterable&& segment) {  
+void tree_constructor::reduce_segment(Iterable&& segment) {
   auto layer = reduce_leaves(segment);
+  // std::cout << "Layer sizes: " << leaves.load_factor() << ' ';
   for (auto index = 1u; layer.size() > 1 || index < nodes.size(); ++index) {
     layer = reduce_nodes(layer, index);
+    // std::cout << nodes[index-1].load_factor() << ' ';
   }
+  // std::cout << '\n';
 
   roots.emplace_back(layer.front());
 }

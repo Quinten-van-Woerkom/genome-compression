@@ -20,7 +20,7 @@ class fasta_reader {
 public:
   using value_type = dna;
 
-  fasta_reader(std::filesystem::path path, std::size_t buffer_size = (1<<18));
+  fasta_reader(std::filesystem::path path, std::size_t buffer_size = (1<<22));
   fasta_reader(const fasta_reader&) = delete;
   fasta_reader(fasta_reader&&) = delete;
 
@@ -32,7 +32,8 @@ public:
   void load_buffer();
   void swap_buffers();
   auto read_into(std::vector<dna>& vector) -> bool;
-  auto size() -> std::size_t;
+  auto size() const -> std::size_t;
+  auto buffers() const -> std::size_t;
 
 private:
   std::vector<dna> buffer;

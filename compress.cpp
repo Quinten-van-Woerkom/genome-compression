@@ -26,15 +26,15 @@ int main(int argc, char* argv[]) {
     << "============================================================\n"
     << " Filename:                  " << path << '\n'
     << " Size:                      " << bytes_to_string(file_size) << '\n'
-    << " Nucleotides (upper bound): " << file_size << '\n';
+    << " Nucleotides (upper bound): " << file_size << "\n\n";
 
   auto start = std::chrono::high_resolution_clock::now();
-  auto compressed = shared_tree{path};
+  auto compressed = shared_tree{path, true};
   auto end = std::chrono::high_resolution_clock::now();
   auto construction_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
   
   start = std::chrono::high_resolution_clock::now();
-  compressed.sort_tree();
+  compressed.sort_tree(true);
   end = std::chrono::high_resolution_clock::now();
   auto sorting_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 

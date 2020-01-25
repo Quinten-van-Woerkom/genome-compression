@@ -70,8 +70,16 @@ void fasta_reader::load_buffer() {
  * in this count. As each byte character is a single base pair, the number of
  * base pairs is bounded by the size of the file in bytes.
  */
-auto fasta_reader::size() -> std::size_t {
+auto fasta_reader::size() const -> std::size_t {
   return std::filesystem::file_size(path);
+}
+
+/**
+ * Returns an approximation of the number of buffers required to read the file
+ * in its entirety.
+ */
+auto fasta_reader::buffers() const -> std::size_t {
+  return size() / char_buffer.size();
 }
 
 /**

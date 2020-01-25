@@ -5,6 +5,7 @@
  *  those trees. This does mean that unbalanced trees are not supported.
  */
 
+#include <cmath>
 #include <future>
 #include <limits>
 #include <numeric>
@@ -26,14 +27,34 @@ constexpr auto address_space(std::size_t segment) noexcept {
 }
 
 /**
+ * Helper function that returns the start of the address space associated with
+ * a segment.
+ */
+constexpr auto address_start(std::size_t segment) noexcept {
+  constexpr auto starts = std::array{
+    0ull, address_space(0), address_space(0) + address_space(1),
+    address_space(0) + address_space(1) + address_space(2)
+  };
+  return starts[segment];
+}
+
+/**
+ * Helper function that determines the segment an index maps to.
+ */
+constexpr auto layer_segment(std::size_t index) noexcept {
+  if (index < address_start(0b01)) return 0b00;
+  else if (index < address_start(0b10)) return 0b01;
+  else if (index < address_start(0b11)) return 0b10;
+  else return 0b11;
+}
+
+/**
  * Helper function that determines the segment and offset an index belongs to.
  */
 constexpr auto compress_pointer(std::size_t index) noexcept {
-  if (index == 0x1fffffff) return std::pair{0b11ull, 0xfffffffull};
-  if (index < address_space(0)) return std::pair{0b00ull, index - pointer::address_start[0b00]};
-  if (index < address_space(1)) return std::pair{0b01ull, index - pointer::address_start[0b01]};
-  if (index < address_space(2)) return std::pair{0b10ull, index - pointer::address_start[0b10]};
-  return std::pair{0b11ull, index - pointer::address_start[0b11]};
+  if (index == 0x1fffffff) return std::pair{0b11, 0xfffffffull};
+  const auto segment = layer_segment(index);
+  return std::pair{segment, index - address_start(segment)};
 }
 
 /**
@@ -42,7 +63,7 @@ constexpr auto compress_pointer(std::size_t index) noexcept {
  */
 constexpr auto decompress_pointer(std::size_t segment, std::size_t offset) noexcept {
   if (segment == 0b11 && offset == 0xfffffff) return 0x1fffffffull;
-  return offset + pointer::address_start[segment];
+  return address_start(segment) + offset;
 }
 
 /**
@@ -183,16 +204,14 @@ auto node::deserialize(std::istream& is) -> node {
 /**
  * Constructs a shared_tree from a FASTA formatted file.
  */
-shared_tree::shared_tree(fasta_reader file) {
+shared_tree::shared_tree(fasta_reader file, bool verbose) {
   auto constructor = tree_constructor{*this};
-  root = constructor.reduce(file);
-  nodes.reserve(64);
+  root = constructor.reduce(file, verbose);
 }
 
-shared_tree::shared_tree(std::vector<dna>& data) {
+shared_tree::shared_tree(std::vector<dna>& data, bool verbose) {
   auto constructor = tree_constructor{*this};
-  root = constructor.reduce(data);
-  nodes.reserve(64);
+  root = constructor.reduce(data, verbose);
 }
 
 /**
@@ -421,21 +440,40 @@ void shared_tree::sort_nodes(std::size_t layer) {
  * reduce the pointers size required to refer to the most-referenced bits.
  * This further improves the effectiveness of pointer compression.
  */
-void shared_tree::sort_tree() {
-  // A red-black ordering is applied, as layers separated by at least one other
-  // layer can be reordered independently.
+void shared_tree::sort_tree(bool verbose) {
   std::vector<std::thread> threads;
   threads.emplace_back(&shared_tree::sort_leaves, this);
+
+  if (verbose)
+    std::cout << progress_bar("Sorting nodes", 0, 1) << std::flush;
+
   for (auto layer = 1u; layer < nodes.size()-1; layer += 2)
     threads.emplace_back(&shared_tree::sort_nodes, this, layer);
 
-  for (auto& thread : threads) thread.join();
+  auto i = 0;
+  for (auto& thread : threads) {
+    thread.join();
+
+    if (verbose) {
+      std::cout << progress_bar("Sorting nodes", i, 2*threads.size()) << std::flush;
+      ++i;
+    }
+  }
 
   threads.clear();
   for (auto layer = 0u; layer < nodes.size()-1; layer += 2)
     threads.emplace_back(&shared_tree::sort_nodes, this, layer);
 
-  for (auto& thread : threads) thread.join();
+  for (auto& thread : threads) {
+    thread.join();
+
+    if (verbose) {
+      std::cout << progress_bar("Sorting nodes", i, 2*threads.size()) << std::flush;
+      ++i;
+    }
+  }
+  if (verbose)
+    std::cout << "\rSorting nodes: done." << spaces(100) << '\n';
 }
 
 /**
@@ -630,9 +668,18 @@ auto tree_constructor::emplace_node(std::size_t layer, pointer left, pointer rig
 /**
  * Reduces all gathered root nodes in order to fully reduce the tree.
  */
-auto tree_constructor::reduce_roots() -> pointer {
-  for (auto index = nodes.size(); roots.size() > 1; ++index)
+auto tree_constructor::reduce_roots(bool verbose) -> pointer {
+  const auto size = log2(roots.size());
+  auto i = 0;
+  for (auto index = nodes.size(); roots.size() > 1; ++index, ++i) {
     roots = reduce_nodes(roots, index);
+    if (verbose)
+      std::cout << progress_bar("Combining subtrees", i, size) << std::flush;
+  }
+
+  if (verbose)
+    std::cout << "\rCombining subtrees: done." << spaces(100) << '\n';
+
   return roots.front();
 }
 
@@ -663,13 +710,23 @@ auto tree_constructor::reduce_nodes(const std::vector<pointer>& iterable, std::s
  * The resulting subtree roots are then accumulated into a single top layer
  * which is also reduced to complete the tree.
  */
-auto tree_constructor::reduce(fasta_reader& file) -> pointer {
+auto tree_constructor::reduce(fasta_reader& file, bool verbose) -> pointer {
   std::vector<dna> buffer;
+  auto current_buffer = 0;
+  const auto approximate_buffer_count = file.buffers();
   while (file.read_into(buffer)) {
     reduce_segment(buffer);
+
+    if (verbose) {
+      ++current_buffer;
+      std::cout << progress_bar("Constructing subtrees", current_buffer, approximate_buffer_count) << std::flush;
+    }
   }
 
-  return reduce_roots();
+  if (verbose)
+    std::cout << "\rConstructing subtrees: done." << spaces(100) << '\n';
+
+  return reduce_roots(verbose);
 }
 
 /**
@@ -677,13 +734,24 @@ auto tree_constructor::reduce(fasta_reader& file) -> pointer {
  * reduced. The resulting tree roots are then also reduced to obtain the
  * final tree representation.
  */
-auto tree_constructor::reduce(const std::vector<dna>& data) -> pointer {
+auto tree_constructor::reduce(const std::vector<dna>& data, bool verbose) -> pointer {
   constexpr auto subtree_depth = 25;
   constexpr auto subtree_width = (1u<<subtree_depth);
 
+  auto current_subtree = 0;
+  const auto subtrees = data.size() / subtree_width;
+
   for (auto segment : chunks(data, subtree_width)) {
     reduce_segment(segment);
+    
+    if (verbose) {
+      ++current_subtree;
+      std::cout << progress_bar("Constructing subtrees", current_subtree, subtrees) << std::flush;
+    }
   }
+
+  if (verbose)
+    std::cout << "\rConstructing subtrees: done." << spaces(100) << '\n';
   
-  return reduce_roots();
+  return reduce_roots(verbose);
 }
