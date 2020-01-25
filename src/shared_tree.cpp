@@ -441,37 +441,43 @@ void shared_tree::sort_nodes(std::size_t layer) {
  * This further improves the effectiveness of pointer compression.
  */
 void shared_tree::sort_tree(bool verbose) {
-  std::vector<std::thread> threads;
-  threads.emplace_back(&shared_tree::sort_leaves, this);
-
   if (verbose)
     std::cout << progress_bar("Sorting nodes", 0, 1) << std::flush;
+  std::vector<std::future<void>> futures;
 
+  // Checks if a future is ready
+  auto ready = [](const auto& future) {
+    if (!future.valid()) return false;
+    return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+  };
+
+  futures.emplace_back(std::async(&shared_tree::sort_leaves, this));
   for (auto layer = 1u; layer < nodes.size()-1; layer += 2)
-    threads.emplace_back(&shared_tree::sort_nodes, this, layer);
+    futures.emplace_back(std::async(&shared_tree::sort_nodes, this, layer));
 
-  auto i = 0;
-  for (auto& thread : threads) {
-    thread.join();
-
-    if (verbose) {
-      std::cout << progress_bar("Sorting nodes", i, 2*threads.size()) << std::flush;
-      ++i;
+  auto count = 0;
+  for (auto& future : futures) {
+    if (ready(future)) {
+      future.get();
+      ++count;
+      if (verbose)
+        std::cout << progress_bar("Sorting nodes", count, 2*futures.size()) << std::flush;
     }
   }
 
-  threads.clear();
+  futures.clear();
   for (auto layer = 0u; layer < nodes.size()-1; layer += 2)
-    threads.emplace_back(&shared_tree::sort_nodes, this, layer);
+    futures.emplace_back(std::async(&shared_tree::sort_nodes, this, layer));
 
-  for (auto& thread : threads) {
-    thread.join();
-
-    if (verbose) {
-      std::cout << progress_bar("Sorting nodes", i, 2*threads.size()) << std::flush;
-      ++i;
+  for (auto& future : futures) {
+    if (ready(future)) {
+      future.get();
+      ++count;
+      if (verbose)
+        std::cout << progress_bar("Sorting nodes", count, 2*futures.size()) << std::flush;
     }
   }
+
   if (verbose)
     std::cout << "\rSorting nodes: done." << spaces(100) << '\n';
 }
