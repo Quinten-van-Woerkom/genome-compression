@@ -48,7 +48,7 @@ void print_tree_dimensions(shared_tree& tree, std::size_t width) {
     << "\n============================================================\n"
     << " Tree dimensions\n"
     << "============================================================\n"
-    << " Leaf size:                 " << dna::size() << " base pairs\n"
+    << " Leaf size:                 " << dna::size() << " nucleotides\n"
     << " Width:                     " << width << '\n'
     << " Depth:                     " << tree.depth() << '\n'
     << " Leaves:                    " << tree.leaf_count() << '\n'
@@ -65,14 +65,17 @@ void print_timings(std::chrono::milliseconds construction, std::chrono::millisec
 }
 
 void print_statistics(std::size_t original_size, std::size_t compressed_size,
-  std::chrono::milliseconds construction, std::chrono::milliseconds sorting)
+  std::size_t compressed_width, std::chrono::milliseconds construction,
+  std::chrono::milliseconds sorting)
 {
   std::cout << dna::size()
+    << ", " << compressed_width
     << ", " << double(original_size)/double(compressed_size)
     << ", " << original_size
     << ", " << compressed_size
     << ", " << construction.count()
     << ", " << sorting.count()
+    << ", " << construction.count() + sorting.count()
     << '\n';
 }
 
@@ -195,7 +198,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (statistics) {
-    print_statistics(original_size, compressed_size, construction_time, sorting_time);
+    print_statistics(original_size, compressed_size, compressed_width, construction_time, sorting_time);
   }
 
   return 0;
