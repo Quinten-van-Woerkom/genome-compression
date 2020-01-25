@@ -1,0 +1,242 @@
+#!/bin/bash
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/GRCm38.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/GRCh38.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/banana.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/mice.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/hehcmv.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/vaccg.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/mpomptcg.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/chntxx.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/chmpxx.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/mtpacga.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/humhbb.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/humghcs.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/humhdab.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/humprtb.csv
+echo "DNA size,nucleotides,compression ratio,original size,compressed size,construction time,sorting time,total time" > ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=16
+./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
+./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress ../mice.fna --no-save --statistics >> ../results/mice.csv
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=15
+./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
+./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress ../mice.fna --no-save --statistics >> ../results/mice.csv
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=14
+./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
+./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress ../mice.fna --no-save --statistics >> ../results/mice.csv
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=13
+./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
+./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress ../mice.fna --no-save --statistics >> ../results/mice.csv
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=12
+./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
+./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress ../mice.fna --no-save --statistics >> ../results/mice.csv
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=11
+./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
+./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress ../mice.fna --no-save --statistics >> ../results/mice.csv
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=10
+./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
+./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress ../mice.fna --no-save --statistics >> ../results/mice.csv
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=9
+./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
+./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=8
+./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
+./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=7
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=6
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=5
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=4
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=3
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=2
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
+make clean release DNA_STRAND_SIZE=1
+./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
+./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
+./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
+./compress data/chntxx --no-save --statistics >> ../results/chntxx.csv
+./compress data/chmpxx --no-save --statistics >> ../results/chmpxx.csv
+./compress data/mtpacga --no-save --statistics >> ../results/mtpacga.csv
+./compress data/humhbb --no-save --statistics >> ../results/humhbb.csv
+./compress data/humghcs --no-save --statistics >> ../results/humghcs.csv
+./compress data/humhdab --no-save --statistics >> ../results/humhdab.csv
+./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
+./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
