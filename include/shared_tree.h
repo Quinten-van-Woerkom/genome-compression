@@ -36,10 +36,16 @@
 class pointer {
 public:
   static constexpr auto address_bits = std::array{4, 12, 20, 28};
+  static constexpr auto address_space = std::array{1ull << address_bits[0], 1ull << address_bits[1], 1ull << address_bits[2], 1ull << address_bits[3]};
+  static constexpr auto address_start = std::array{0ull, address_space[0], address_space[0] + address_space[1], address_space[0] + address_space[1] + address_space[2]};
 
   pointer(std::nullptr_t = nullptr) noexcept;
   pointer(const pointer& other, bool mirror = false, bool transpose = false) noexcept;
   pointer(std::size_t index, bool mirror, bool transpose, bool invariant) noexcept;
+
+  pointer(pointer&&) noexcept = default;
+  pointer& operator=(const pointer&) noexcept = default;
+  pointer& operator=(pointer&&) noexcept = default;
 
   bool empty() const noexcept { return *this == nullptr; }
   auto canonical() const noexcept { return data; }
@@ -86,6 +92,11 @@ inline auto& operator<<(std::ostream& os, const pointer& pointer) {
 class node {
 public:
   node(pointer left, pointer right = nullptr) : children{left, right} {};
+  
+  node(const node&) noexcept = default;
+  node(node&&) noexcept = default;
+  node& operator=(const node&) noexcept = default;
+  node& operator=(node&&) noexcept = default;
   
   bool operator==(const node& other) const noexcept;
   bool operator!=(const node& other) const noexcept { return !(*this == other); };
