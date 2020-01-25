@@ -38,7 +38,7 @@ enum class nac : char {
 /******************************************************************************
  * FASTA-compliant DNA strand
  *  Only Uracil is neglected, as it is not present in DNA; all other FASTA
- *  codes are supported.
+ *  nucleic acid codes are supported.
  */
 class dna {
   static constexpr std::size_t length = DNA_STRAND_SIZE;   // Length of a single strand
