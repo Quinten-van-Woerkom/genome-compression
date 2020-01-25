@@ -32,7 +32,6 @@ public:
   void load_buffer();
   void swap_buffers();
   auto read_into(std::vector<dna>& vector) -> bool;
-
   auto size() -> std::size_t;
 
 private:
