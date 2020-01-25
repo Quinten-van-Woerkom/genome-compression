@@ -30,13 +30,10 @@ constexpr auto address_space(std::size_t segment) noexcept {
  */
 constexpr auto compress_pointer(std::size_t index) noexcept {
   if (index == 0x1fffffff) return std::pair{0b11ull, 0xfffffffull};
-  if (index < address_space(0)) return std::pair{0b00ull, (unsigned long long)index};
-  index -= address_space(0);
-  if (index < address_space(1)) return std::pair{0b01ull, (unsigned long long)index};
-  index -= address_space(1);
-  if (index < address_space(2)) return std::pair{0b10ull, (unsigned long long)index};
-  index -= address_space(2);
-  return std::pair{0b11ull, (unsigned long long)index};
+  if (index < address_space(0)) return std::pair{0b00ull, index - pointer::address_start[0b00]};
+  if (index < address_space(1)) return std::pair{0b01ull, index - pointer::address_start[0b01]};
+  if (index < address_space(2)) return std::pair{0b10ull, index - pointer::address_start[0b10]};
+  return std::pair{0b11ull, index - pointer::address_start[0b11]};
 }
 
 /**
@@ -45,11 +42,7 @@ constexpr auto compress_pointer(std::size_t index) noexcept {
  */
 constexpr auto decompress_pointer(std::size_t segment, std::size_t offset) noexcept {
   if (segment == 0b11 && offset == 0xfffffff) return 0x1fffffffull;
-  unsigned long long index = offset;
-  if (segment > 0b00) index += address_space(0b00);
-  if (segment > 0b01) index += address_space(0b01);
-  if (segment > 0b10) index += address_space(0b10);
-  return index;
+  return offset + pointer::address_start[segment];
 }
 
 /**
