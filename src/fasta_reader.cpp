@@ -17,17 +17,19 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
     exit(1);
   }
 
+
   // Make sure that we do not allocate an unnecessarily big buffer.
   const auto file_size = std::filesystem::file_size(path);
-  const auto file_strands = file_size/(dna::size()/2)+1;
-  if (file_strands < buffer_size)
-    buffer_size = file_strands;
+  const auto file_strands = file_size/dna::size()+dna::size();
 
-  buffer.resize(buffer_size);
-  char_buffer.resize(buffer_size*dna::size() + 1);
-
-  if (file_strands >= buffer_size)
-    background_loader = std::thread{&fasta_reader::load_buffer, this};
+  if (file_strands < buffer_size) {
+    buffer.resize(file_strands);
+    char_buffer.resize(file_strands*dna::size() + 1);
+  } else {
+    buffer.resize(buffer_size);
+    char_buffer.resize(buffer_size*dna::size() + 1);
+  }
+  background_loader = std::thread{&fasta_reader::load_buffer, this};
 }
 
 /**
@@ -78,6 +80,7 @@ auto fasta_reader::size() -> std::size_t {
  * Returns true if the read was successful, false otherwise.
  */
 bool fasta_reader::read_into(std::vector<dna>& vector) {
+  if (end_of_file) return false;
   if (background_loader.joinable()) background_loader.join();
   std::swap(buffer, vector);
 

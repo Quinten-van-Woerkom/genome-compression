@@ -14,7 +14,7 @@ OBJS=$(subst .cpp,.o,$(SRCS))
 
 DNA_STRAND_SIZE=12
 
-release: ADDED_CPPFLAGS=-O3 -flto=thin -DNDEBUG -DDNA_STRAND_SIZE=$(DNA_STRAND_SIZE)
+release: ADDED_CPPFLAGS=-O3 -flto=thin -DDNA_STRAND_SIZE=$(DNA_STRAND_SIZE)
 
 all release: compress test
 

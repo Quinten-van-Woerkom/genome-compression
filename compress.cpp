@@ -78,6 +78,8 @@ int main(int argc, char* argv[]) {
     << " Tree construction:         " << construction_time.count() << " ms\n"
     << " Frequency sorting:         " << sorting_time.count() << " ms\n\n";
 
+  // Short output for data collection purposes
+  // std::cout << dna::size() << ',' << double(file_size)/double(compressed_size) << '\n';
 
   return 0;
 }

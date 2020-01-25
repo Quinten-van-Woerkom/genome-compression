@@ -79,7 +79,6 @@ constexpr auto from_nac(nac code) -> char {
 dna::dna(const std::string_view strand) {
   assert(strand.size() == length);
   for (auto i = 0u; i < length; ++i) {
-    if (!valid_nac(strand[i])) std::cout << "Invalid DNA strand: " << strand << '\n';
     set(i, strand[i]);
   }
 }

@@ -26,34 +26,50 @@ constexpr auto address_space(std::size_t segment) noexcept {
 }
 
 /**
+ * Helper function that determines the segment and offset an index belongs to.
+ */
+constexpr auto compress_pointer(std::size_t index) noexcept {
+  if (index == 0x1fffffff) return std::pair{0b11ull, 0xfffffffull};
+  if (index < address_space(0)) return std::pair{0b00ull, (unsigned long long)index};
+  index -= address_space(0);
+  if (index < address_space(1)) return std::pair{0b01ull, (unsigned long long)index};
+  index -= address_space(1);
+  if (index < address_space(2)) return std::pair{0b10ull, (unsigned long long)index};
+  index -= address_space(2);
+  return std::pair{0b11ull, (unsigned long long)index};
+}
+
+/**
+ * Helper function that determines the index that a segment-offset pair
+ * corresponds with.
+ */
+constexpr auto decompress_pointer(std::size_t segment, std::size_t offset) noexcept {
+  if (segment == 0b11 && offset == 0xfffffff) return 0x1fffffffull;
+  unsigned long long index = offset;
+  if (segment > 0b00) index += address_space(0b00);
+  if (segment > 0b01) index += address_space(0b01);
+  if (segment > 0b10) index += address_space(0b10);
+  return index;
+}
+
+/**
  * Constructor from another pointer. Transformations can be applied to the
  * pointer, if necessary.
  * Note that a transposed nullptr must also be a nullptr, so that bits must
  * be set in this special case. This is the only case where a pointer is
  * invariant under transposition.
  */
-pointer::pointer(const pointer& other, bool mirror_, bool transpose_)
+pointer::pointer(const pointer& other, bool mirror_, bool transpose_) noexcept
 : data{other.data},
-  mirror{mirror_ != other.mirror && !other.invariant && other != nullptr},
+  mirror{mirror_ != other.mirror && !other.invariant},
   transpose{transpose_ != other.transpose && other != nullptr},
-  segment{other.segment},
-  invariant{other.invariant} {
-    assert(!(mirror && invariant));
-  }
+  invariant{other.invariant} {}
 
 /**
  * Constructor from an index with given similarity transforms.
- * Stores the index in (segment, offset) format, so that smaller indices can
- * be represented as shorter pointers.
  */
-pointer::pointer(std::size_t index, bool mirror_, bool transpose_, bool invariant_)
-: data{index}, mirror{mirror_ && !invariant_}, transpose{transpose_}, segment{0}, invariant{invariant_} {
-  while (data >= address_space(segment)) {
-    ++segment;
-    data -= address_space(segment-1);
-  }
-  assert(!(mirror && invariant));
-}
+pointer::pointer(std::size_t index, bool mirror_, bool transpose_, bool invariant_) noexcept
+: data{(std::uint32_t)index}, mirror{mirror_ && !invariant_}, transpose{transpose_}, invariant{invariant_} {}
 
 /**
  * Constructs a null pointer, indicating an empty subtree.
@@ -63,21 +79,17 @@ pointer::pointer(std::size_t index, bool mirror_, bool transpose_, bool invarian
  * Mirror and transpose are false for all null pointers and their
  * transformations.
  */
-pointer::pointer(std::nullptr_t)
-: mirror{false}, transpose{false}, segment{0b11}, invariant{false} {
-  data ^= ~data;
-  assert(!(mirror && invariant));
-}
+pointer::pointer(std::nullptr_t) noexcept
+: data{0x1fffffff}, mirror{false}, transpose{false}, invariant{true} {}
 
 /**
  * Returns the unsigned integer equivalent of the data stored in this
  * pointer. Note that the invariance bit is neglected.
  */
-auto pointer::to_ullong() const noexcept -> unsigned long long {
+auto pointer::to_ulong() const noexcept -> unsigned long {
   return data
-  | ((std::uint64_t)mirror << address_bits.back())
-  | ((std::uint64_t)transpose << (address_bits.back() + 1))
-  | ((std::uint64_t)segment << (address_bits.back() + 2));
+  | ((std::uint32_t)mirror << (address_bits.back() + 1))
+  | ((std::uint32_t)transpose << (address_bits.back() + 2));
 }
 
 
@@ -86,11 +98,16 @@ auto pointer::to_ullong() const noexcept -> unsigned long long {
  */
 auto pointer::index() const noexcept -> std::size_t {
   assert(!empty());
-  auto offset = data;
-  if (segment >= 0b11) offset += address_space(0b10);
-  if (segment >= 0b10) offset += address_space(0b01);
-  if (segment >= 0b01) offset += address_space(0b00);
-  return offset;
+  return data;
+}
+
+/**
+ * Returns the number of bytes required to store the pointer in memory, taking
+ * into account the pointer compression applied on serialization.
+ */
+auto pointer::bytes() const noexcept -> std::size_t {
+  const auto [segment, offset] = compress_pointer(data);
+  return (4 + address_bits[segment])/8;
 }
 
 /**
@@ -100,11 +117,12 @@ auto pointer::index() const noexcept -> std::size_t {
  * remain.
  */
 void pointer::serialize(std::ostream& os) const {
+  const auto [segment, offset] = compress_pointer(data);
   int index = address_bits[segment]-4;
-  std::uint8_t store = ((data >> index) & 0xf) | mirror << 4 | transpose << 5 | segment << 6;
+  std::uint8_t store = offset >> index | mirror << 4 | transpose << 5 | segment << 6;
   binary_write(os, store);
   for (index -= 8; index >= 0; index -= 8) {
-    store = static_cast<std::uint8_t>(data >> index);
+    store = static_cast<std::uint8_t>(offset >> index);
     binary_write(os, store);
   }
 }
@@ -113,22 +131,21 @@ void pointer::serialize(std::ostream& os) const {
  * Loads a pointer from an input stream.
  */
 auto pointer::deserialize(std::istream& is) -> pointer {
-  auto result = pointer{};
   std::uint8_t loaded;
   binary_read(is, loaded);
-  result.segment = (loaded >> 6) & 3u;
-  result.transpose = (loaded >> 5) & 1u;
-  result.mirror = (loaded >> 4) & 1u;
-  if (result.is_invariant()) std::cerr << "Invariant should be false when deserializing\n";
-  
-  auto index = address_bits[result.segment]-4;
-  result.data = ((std::uint64_t)loaded & 0xf) << index;
+  auto segment = (loaded >> 6) & 0x3;
+  bool transpose = (loaded >> 5) & 0x1;
+  bool mirror = (loaded >> 4) & 0x1;
+  auto index = address_bits[segment]-4;
+  auto offset = ((std::uint64_t)loaded & 0xf) << index;
 
   for (index -= 8; index >= 0; index -= 8) {
     binary_read(is, loaded);
-    result.data |= ((std::uint64_t)loaded << index);
+    offset |= ((std::uint64_t)loaded << index);
   }
-  return result;
+
+  auto data = decompress_pointer(segment, offset);
+  return pointer{data, mirror, transpose, false};
 }
 
 
@@ -142,22 +159,7 @@ auto pointer::deserialize(std::istream& is) -> pointer {
  * through any possible combination of similarity transforms.
  */
 bool node::operator==(const node& other) const noexcept {
-  return children == other.children
-  || mirrored().children == other.children
-  || transposed().children == other.children
-  || inverted().children == other.children;
-}
-
-/**
- * Determines the transformations required to obtain other from the current
- * node. First boolean corresponds to mirroring, second to transposition.
- * Precondition: other must be similar to this.
- */
-auto node::transformations(const node& other) const noexcept -> std::pair<bool, bool> {
-  if (children == other.children) return {false, false};
-  if (mirrored().children == other.children) return {true, false};
-  if (transposed().children == other.children) return {false, true};
-  else return {true, true};
+  return children == other.children;
 }
 
 /**
@@ -248,12 +250,14 @@ auto shared_tree::children(std::size_t layer, pointer pointer) const -> std::siz
  * Indexing operator into the tree.
  * It is advised not to use this for iteration, as the induced overhead
  * compared to the implemented iterator is significant.
+ * Precondition: index < width
+ * Precondition: no nullptrs within the tree, only at the right edge
  */
 auto shared_tree::operator[](std::uint64_t index) const -> dna {
   auto current = root;
 
   auto descend = [&](auto layer, auto left, auto right) {
-    const auto size = children(layer, left);
+    const auto size = (1u << (layer));
     const auto mirror = current.is_mirrored();
     const auto transpose = current.is_transposed();
 
@@ -262,28 +266,16 @@ auto shared_tree::operator[](std::uint64_t index) const -> dna {
     return pointer(right, mirror, transpose);
   };
 
-  for (auto layer = nodes.size()-1; layer > 0; --layer) {
+  for (int layer = nodes.size()-1; layer >= 0; --layer) {
     const auto& node = access_node(layer, current);
     const auto left = node.left();
     const auto right = node.right();
 
-    if (current.is_mirrored()) current = descend(layer-1, right, left);
-    else current = descend(layer-1, left, right);
+    if (current.is_mirrored()) current = descend(layer, right, left);
+    else current = descend(layer, left, right);
   }
 
-  const auto& node = access_node(0, current);
-  const auto mirror = current.is_mirrored();
-  const auto transpose = current.is_transposed();
-
-  const auto left = node.left();
-  const auto right = node.right();
-  if (!mirror) {
-    if (index < !left.empty()) return access_leaf({left, mirror, transpose});
-    else return access_leaf({right, mirror, transpose});
-  } else {
-    if (index < !right.empty()) return access_leaf({right, mirror, transpose});
-    else return access_leaf({left, mirror, transpose});
-  }
+  return access_leaf(current);
 }
 
 /**
@@ -633,18 +625,13 @@ auto tree_constructor::emplace_leaves(dna last) -> pointer {
 auto tree_constructor::emplace_node(std::size_t layer, pointer left, pointer right) -> pointer
 {
   const auto created_node = node{left, right};
-  const auto insertion = nodes[layer].emplace(created_node, parent.node_count(layer));
-  const auto canonical_node = (*insertion.first).first;
+  const auto [canonical_node, mirror, transpose] = created_node.canonical();
+  const auto insertion = nodes[layer].emplace(canonical_node, parent.node_count(layer));
+  if (insertion.second) parent.emplace_node(layer, canonical_node);
   const auto index = (*insertion.first).second;
-  const auto invariant = (left == right.mirrored());
 
-  if (insertion.second) {
-    parent.emplace_node(layer, created_node);
-    return pointer{index, false, false, invariant};
-  } else {
-    auto transform = created_node.transformations(canonical_node);
-    return pointer{index, transform.first, transform.second, invariant};
-  }
+  const auto invariant = (left == right.mirrored());
+  return pointer{index, mirror, transpose, invariant};
 }
 
 /**
@@ -668,16 +655,13 @@ auto tree_constructor::reduce_nodes(const std::vector<pointer>& iterable, std::s
   if (parent.depth()-2 < index) {
     parent.add_layer();
     nodes.emplace_back();
-    // nodes_mutex.emplace_back();
   }
 
-  auto current_layer_lock = std::lock_guard{nodes_mutex[index]};
-  auto next_layer_lock = std::lock_guard{nodes_mutex[index+1]};
   foreach_pair(iterable,
     [&](auto left, auto right) { layer.emplace_back(emplace_node(index, left, right)); },
     [&](auto last) { layer.emplace_back(emplace_node(index, last)); }
   );
-
+  
   return layer;
 }
 
@@ -687,9 +671,8 @@ auto tree_constructor::reduce_nodes(const std::vector<pointer>& iterable, std::s
  * which is also reduced to complete the tree.
  */
 auto tree_constructor::reduce(fasta_reader& file) -> pointer {
-  while (!file.eof()) {
-    std::vector<dna> buffer;
-    file.read_into(buffer);
+  std::vector<dna> buffer;
+  while (file.read_into(buffer)) {
     reduce_segment(buffer);
   }
 
@@ -705,8 +688,9 @@ auto tree_constructor::reduce(const std::vector<dna>& data) -> pointer {
   constexpr auto subtree_depth = 25;
   constexpr auto subtree_width = (1u<<subtree_depth);
 
-  for (auto segment : chunks(data, subtree_width))
+  for (auto segment : chunks(data, subtree_width)) {
     reduce_segment(segment);
+  }
   
   return reduce_roots();
 }

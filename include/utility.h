@@ -155,13 +155,13 @@ auto iterator_pair(Iterator1 begin, Iterator2 end) {
  *  Parameter pack-supporting min.
  */
 template<typename T>
-auto variadic_min(T&& value) -> decltype(auto)
+constexpr auto variadic_min(T&& value) noexcept -> decltype(auto)
 {
   return std::forward<T>(value);
 }
 
 template<typename T1, typename T2, typename... Ts>
-auto variadic_min(T1&& value1, T2&& value2, Ts&&... values) -> decltype(auto)
+constexpr auto variadic_min(T1&& value1, T2&& value2, Ts&&... values) noexcept -> decltype(auto)
 {
   return value2 < value1
   ? variadic_min(value2, std::forward<Ts>(values)...)

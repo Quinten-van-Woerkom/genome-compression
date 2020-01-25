@@ -37,21 +37,22 @@ class pointer {
 public:
   static constexpr auto address_bits = std::array{4, 12, 20, 28};
 
-  pointer(std::nullptr_t = nullptr);
-  pointer(const pointer& other, bool mirror = false, bool transpose = false);
-  pointer(std::size_t index, bool mirror, bool transpose, bool invariant);
-
-  bool operator==(const pointer& other) const noexcept { return to_ullong() == other.to_ullong(); }
-  bool operator!=(const pointer& other) const noexcept { return to_ullong() != other.to_ullong(); }
-  operator bool() const noexcept { return *this != nullptr; }
-  auto to_ullong() const noexcept -> unsigned long long;
+  pointer(std::nullptr_t = nullptr) noexcept;
+  pointer(const pointer& other, bool mirror = false, bool transpose = false) noexcept;
+  pointer(std::size_t index, bool mirror, bool transpose, bool invariant) noexcept;
 
   bool empty() const noexcept { return *this == nullptr; }
-  auto canonical() const noexcept { return data | ((std::uint64_t)segment << (address_bits.back() + 2)); }
+  auto canonical() const noexcept { return data; }
   auto index() const noexcept -> std::size_t;
   auto leaf() const noexcept -> dna;
 
-  auto bytes() const noexcept -> std::size_t { return (4 + address_bits[segment])/8; }
+  bool operator==(const pointer& other) const noexcept { return to_ulong() == other.to_ulong(); }
+  bool operator!=(const pointer& other) const noexcept { return to_ulong() != other.to_ulong(); }
+  bool operator<(const pointer& other) const noexcept { return canonical() < other.canonical(); }
+  auto to_ulong() const noexcept -> unsigned long;
+  operator bool() const noexcept { return *this != nullptr; }
+
+  auto bytes() const noexcept -> std::size_t;
   void serialize(std::ostream& os) const;
   static auto deserialize(std::istream& is) -> pointer;
 
@@ -60,15 +61,14 @@ public:
   bool is_inverted() const noexcept { return mirror && transpose; }
   bool is_invariant() const noexcept { return invariant; }
 
-  auto mirrored() const noexcept { return invariant ? *this : pointer{*this, true, false}; }
+  auto mirrored() const noexcept { return pointer{*this, true, false}; }
   auto transposed() const noexcept { return pointer{*this, false, true}; }
-  auto inverted() const noexcept { return invariant ? transposed() : pointer{*this, true, true}; }
+  auto inverted() const noexcept { return pointer{*this, true, true}; }
 
 private:
-  std::uint64_t data : address_bits.back();
+  std::uint32_t data : address_bits.back() + 1;
   bool mirror : 1;
   bool transpose : 1;
-  std::size_t segment : 2;
   bool invariant : 1; // Only used in construction, not actually stored to disk
 };
 
@@ -86,17 +86,26 @@ inline auto& operator<<(std::ostream& os, const pointer& pointer) {
 class node {
 public:
   node(pointer left, pointer right = nullptr) : children{left, right} {};
+  
+  bool operator==(const node& other) const noexcept;
+  bool operator!=(const node& other) const noexcept { return !(*this == other); };
+  bool operator<(const node& other) const noexcept { return children < other.children; }
 
   auto left() const noexcept { return children[0]; }
   auto right() const noexcept { return children[1]; }
 
   auto mirrored() const noexcept { return node{children[1].mirrored(), children[0].mirrored()}; }
   auto transposed() const noexcept { return node{children[0].transposed(), children[1].transposed()}; }
-  auto inverted() const noexcept { return mirrored().transposed(); }
+  auto inverted() const noexcept { return node{children[1].inverted(), children[0].inverted()}; }
 
-  bool operator==(const node& other) const noexcept;
-  bool operator!=(const node& other) const noexcept { return !(*this == other); };
-  auto transformations(const node& other) const noexcept -> std::pair<bool, bool>;
+  auto canonical() const noexcept -> std::tuple<node, bool, bool> {
+    return variadic_min(
+      std::tuple{*this, false, false},
+      std::tuple{mirrored(), true, false},
+      std::tuple{transposed(), false, true},
+      std::tuple{inverted(), true, true}
+    );
+  }
   
   auto bytes() const noexcept { return left().bytes() + right().bytes(); }
   void serialize(std::ostream& os) const;
@@ -106,8 +115,8 @@ private:
   std::array<pointer, 2> children;
 };
 
-inline auto& operator<<(std::ostream& os, const node& node) {
-  return os << "node<" << node.left() << ", " << node.right() << ">";
+inline auto& operator<<(std::ostream& os, const node& n) {
+  return os << "node<" << n.left() << ", " << n.right() << '>';
 }
 
 
@@ -118,13 +127,7 @@ inline auto& operator<<(std::ostream& os, const node& node) {
 namespace std {
   template<> struct hash<node> {
     auto operator()(const node& n) const noexcept -> std::size_t {
-      const auto left = n.left().canonical();
-      const auto right = n.right().canonical();
-      const auto transposed = n.left().is_transposed() ^ n.right().is_transposed();
-      const auto mirrored = (n.left().is_mirrored() ^ n.right().is_mirrored());
-      const auto invariant = (n.left().is_invariant() || n.right().is_invariant()) || (n.left().mirrored() == n.right());
-      if (left < right) return detail::hash(1, transposed, mirrored || invariant, left, right);
-      else return detail::hash(invariant, transposed, mirrored || invariant, right, left);
+      return detail::hash(n.left().to_ulong(), n.right().to_ulong());
     }
   };
 }
@@ -136,9 +139,6 @@ namespace std {
  */
 class shared_tree {
 public:
-  using pointer = pointer;
-  using node = node;
-
   shared_tree() = default;
 
   shared_tree(std::filesystem::path path)
@@ -179,15 +179,12 @@ public:
   friend inline auto operator<<(std::ostream& os, const shared_tree& tree) -> std::ostream&;
 
   struct iterator {
-    using pointer = shared_tree::pointer;
-    using node = shared_tree::node;
-
     struct status {
       status(std::size_t layer, pointer current)
       : layer{layer}, current{current} {}
 
       std::size_t layer;  // Leaf node is denoted by max std::size_t value
-      iterator::pointer current;
+      pointer current;
     };
 
     iterator(shared_tree& nodes, std::size_t layer, pointer root);
@@ -233,13 +230,12 @@ inline auto operator<<(std::ostream& os, const shared_tree& tree) -> std::ostrea
  */
 class tree_constructor {
 public:
-  using pointer = shared_tree::pointer;
-  using node = shared_tree::node;
-
   // Parallel flat hash map offers better performance guarantees than robin hood.
   // In addition, it has concurrency capabilities that might be useful later.
+  // // template<typename T>
+  // // using hash_map = phmap::parallel_flat_hash_map<T, std::size_t>;
   template<typename T>
-  using hash_map = phmap::parallel_flat_hash_map<T, std::size_t>;
+  using hash_map = robin_hood::unordered_flat_map<T, std::size_t>;
 
   tree_constructor(shared_tree& parent);
 
@@ -266,10 +262,6 @@ private:
   std::vector<hash_map<node>> nodes;
   hash_map<dna> leaves;
   std::vector<pointer> roots;
-  std::array<std::mutex, 64> nodes_mutex; // Allows for 64 layers at a time, should be sufficient for now.
-  std::mutex leaves_mutex;
-  std::mutex roots_mutex;
-  std::mutex general_mutex;
 };
 
 /**
@@ -286,8 +278,8 @@ auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer
     nodes.emplace_back();
   }
 
-  auto current_layer_lock = std::lock_guard{leaves_mutex};
-  auto next_layer_lock = std::lock_guard{nodes_mutex[0]};
+  // auto current_layer_lock = std::lock_guard{leaves_mutex};
+  // auto next_layer_lock = std::lock_guard{nodes_mutex[0]};
   foreach_pair(iterable,
     [&](auto left, auto right) { layer.emplace_back(emplace_leaves(left, right)); },
     [&](auto last) { layer.emplace_back(emplace_leaves(last)); }
@@ -302,9 +294,9 @@ auto tree_constructor::reduce_leaves(Iterable&& iterable) -> std::vector<pointer
 template<typename Iterable>
 void tree_constructor::reduce_segment(Iterable&& segment) {  
   auto layer = reduce_leaves(segment);
-  for (auto index = 1u; layer.size() > 1 || index < nodes.size(); ++index)
+  for (auto index = 1u; layer.size() > 1 || index < nodes.size(); ++index) {
     layer = reduce_nodes(layer, index);
+  }
 
-  std::lock_guard lock_roots{roots_mutex};
   roots.emplace_back(layer.front());
 }
