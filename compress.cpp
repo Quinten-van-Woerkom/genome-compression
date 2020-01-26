@@ -69,13 +69,13 @@ void print_statistics(std::size_t original_size, std::size_t compressed_size,
   std::chrono::milliseconds sorting)
 {
   std::cout << dna::size()
-    << ", " << compressed_width
-    << ", " << double(original_size)/double(compressed_size)
-    << ", " << original_size
-    << ", " << compressed_size
-    << ", " << construction.count()
-    << ", " << sorting.count()
-    << ", " << construction.count() + sorting.count()
+    << ',' << compressed_width
+    << ',' << double(original_size)/double(compressed_size)
+    << ',' << original_size
+    << ',' << compressed_size
+    << ',' << construction.count()
+    << ',' << sorting.count()
+    << ',' << construction.count() + sorting.count()
     << '\n';
 }
 
