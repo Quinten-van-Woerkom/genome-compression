@@ -130,6 +130,7 @@ make clean release DNA_STRAND_SIZE=9
 ./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
 ./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
 ./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress ../mice.fna --no-save --statistics >> ../results/mice.csv
 ./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
 ./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
 ./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
@@ -145,6 +146,7 @@ make clean release DNA_STRAND_SIZE=8
 ./compress ../GRCm38.fna --no-save --statistics >> ../results/GRCm38.csv
 ./compress ../GRCh38.fna --no-save --statistics >> ../results/GRCh38.csv
 ./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
+./compress ../mice.fna --no-save --statistics >> ../results/mice.csv
 ./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
 ./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
 ./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
@@ -157,6 +159,7 @@ make clean release DNA_STRAND_SIZE=8
 ./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
 ./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
 make clean release DNA_STRAND_SIZE=7
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
 ./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
 ./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
 ./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
@@ -169,6 +172,7 @@ make clean release DNA_STRAND_SIZE=7
 ./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
 ./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
 make clean release DNA_STRAND_SIZE=6
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
 ./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
 ./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
 ./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
@@ -181,6 +185,7 @@ make clean release DNA_STRAND_SIZE=6
 ./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
 ./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
 make clean release DNA_STRAND_SIZE=5
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
 ./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
 ./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
 ./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
@@ -193,6 +198,7 @@ make clean release DNA_STRAND_SIZE=5
 ./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
 ./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
 make clean release DNA_STRAND_SIZE=4
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
 ./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
 ./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
 ./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
@@ -205,6 +211,7 @@ make clean release DNA_STRAND_SIZE=4
 ./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
 ./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
 make clean release DNA_STRAND_SIZE=3
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
 ./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
 ./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
 ./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
@@ -217,6 +224,7 @@ make clean release DNA_STRAND_SIZE=3
 ./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
 ./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
 make clean release DNA_STRAND_SIZE=2
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
 ./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
 ./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
 ./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
@@ -229,6 +237,7 @@ make clean release DNA_STRAND_SIZE=2
 ./compress data/humprtb --no-save --statistics >> ../results/humprtb.csv
 ./compress data/humdyst --no-save --statistics >> ../results/humdyst.csv
 make clean release DNA_STRAND_SIZE=1
+./compress ../banana.fna --no-save --statistics >> ../results/banana.csv
 ./compress data/hehcmv --no-save --statistics >> ../results/hehcmv.csv
 ./compress data/vaccg --no-save --statistics >> ../results/vaccg.csv
 ./compress data/mpomptcg --no-save --statistics >> ../results/mpomptcg.csv
