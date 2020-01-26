@@ -20,7 +20,7 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
 
   // Make sure that we do not allocate an unnecessarily big buffer.
   const auto file_size = std::filesystem::file_size(path);
-  const auto file_strands = file_size/dna::size()+dna::size();
+  const auto file_strands = file_size/dna::size()+1;
 
   if (file_strands < buffer_size) {
     buffer.resize(file_strands);
@@ -29,6 +29,8 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
     buffer.resize(buffer_size);
     char_buffer.resize(buffer_size*dna::size());
   }
+  buffer.shrink_to_fit();
+  char_buffer.shrink_to_fit();
   background_loader = std::thread{&fasta_reader::load_buffer, this};
 }
 
@@ -42,12 +44,12 @@ void fasta_reader::load_buffer() {
   }
 
   auto position = 0lu;
-  while (position < char_buffer.size()-1) {
+  while (position < char_buffer.size()) {
     file.clear();
     if (file.peek() == '>' || file.peek() == '\n') {
       file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
-    file.getline(&char_buffer[position], char_buffer.size() + 1 - position, '\n');
+    file.getline(&char_buffer[position], char_buffer.size() - position + 1, '\n');
 
     // When a newline is found: failbit == false, actual line size = gcount() - 1
     // When the buffer end is reached: failbit == true, actual line size = gcount()
@@ -55,7 +57,10 @@ void fasta_reader::load_buffer() {
     position += size;
     
     if (file.eof()) {
-      char_buffer.resize((position-1)/dna::size() * dna::size());
+      // If the file does not end with '\n', we actually read one more
+      // character than indicated
+      if (!file.fail()) position += 1;
+      char_buffer.resize(position/dna::size() * dna::size());
       buffer.resize(char_buffer.size() / dna::size());
       break;
     }
@@ -94,6 +99,7 @@ bool fasta_reader::read_into(std::vector<dna>& vector) {
 
   if (!file.eof()) {
     buffer.resize(vector.size());
+    buffer.shrink_to_fit();
     background_loader = std::thread{&fasta_reader::load_buffer, this};
   } else {
     end_of_file = true;

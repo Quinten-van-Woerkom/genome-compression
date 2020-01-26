@@ -40,7 +40,6 @@ auto test_dna() -> int {
 
   expects(a.transposed() == t, "A should complement T: ", a.transposed(), " != ", t);
   expects(p.mirrored() == q, "Mirroring DNA strings should be exactly reversed: ", p.mirrored(), " != ", q);
-  expects(p.nucleotide(2) == 'T');
 
   TEST_END("DNA");
 }
