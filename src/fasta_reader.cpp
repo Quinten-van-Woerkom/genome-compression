@@ -52,14 +52,11 @@ void fasta_reader::load_buffer() {
     file.getline(&char_buffer[position], char_buffer.size() - position + 1, '\n');
 
     // When a newline is found: failbit == false, actual line size = gcount() - 1
-    // When the buffer end is reached: failbit == true, actual line size = gcount()
-    const auto size = file.fail() ? file.gcount() : file.gcount() - 1;
+    // When the buffer or file end is reached: failbit == true, actual line size = gcount()
+    const auto size = file.fail() || file.eof() ? file.gcount() : file.gcount() - 1;
     position += size;
     
     if (file.eof()) {
-      // If the file does not end with '\n', we actually read one more
-      // character than indicated
-      if (!file.fail()) position += 1;
       char_buffer.resize(position/dna::size() * dna::size());
       buffer.resize(char_buffer.size() / dna::size());
       break;
