@@ -24,10 +24,10 @@ fasta_reader::fasta_reader(std::filesystem::path path, std::size_t buffer_size)
 
   if (file_strands < buffer_size) {
     buffer.resize(file_strands);
-    char_buffer.resize(file_strands*dna::size() + 1);
+    char_buffer.resize(file_strands*dna::size());
   } else {
     buffer.resize(buffer_size);
-    char_buffer.resize(buffer_size*dna::size() + 1);
+    char_buffer.resize(buffer_size*dna::size());
   }
   background_loader = std::thread{&fasta_reader::load_buffer, this};
 }
@@ -47,7 +47,7 @@ void fasta_reader::load_buffer() {
     if (file.peek() == '>' || file.peek() == '\n') {
       file.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
-    file.getline(&char_buffer[position], char_buffer.size() - position);
+    file.getline(&char_buffer[position], char_buffer.size() + 1 - position, '\n');
 
     // When a newline is found: failbit == false, actual line size = gcount() - 1
     // When the buffer end is reached: failbit == true, actual line size = gcount()
@@ -55,7 +55,7 @@ void fasta_reader::load_buffer() {
     position += size;
     
     if (file.eof()) {
-      char_buffer.resize((position+1)/dna::size() * dna::size());
+      char_buffer.resize((position-1)/dna::size() * dna::size());
       buffer.resize(char_buffer.size() / dna::size());
       break;
     }

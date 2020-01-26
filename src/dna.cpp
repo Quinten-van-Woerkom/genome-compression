@@ -214,6 +214,5 @@ void dna::set(std::size_t index, nac code) {
 auto operator<<(std::ostream& os, const dna& strand) -> std::ostream& {
   for (auto i = 0u; i < strand.size(); ++i)
     os << strand.nucleotide(i);
-  os << " (" << strand.invariant() << ", " << std::hash<dna>()(strand) << ')';
   return os;
 }

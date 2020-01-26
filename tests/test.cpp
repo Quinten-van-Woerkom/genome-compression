@@ -78,11 +78,12 @@ auto test_chunks() -> int {
 auto test_file_reader() -> int {
   TEST_START("File reader");
 
-  auto path = "data/chmpxx";
-  auto size = std::filesystem::file_size(path);
-  auto buffered = fasta_reader{path, size/2 + 38};
+  auto path = "data/edited";
+  auto reference = "data/chmpxx";
+  auto size = std::filesystem::file_size(reference);
+  auto buffered = fasta_reader{path};
   auto direct = std::vector<std::array<char, dna::size()>>(size/dna::size());
-  auto file = std::ifstream{path, std::ios::binary};
+  auto file = std::ifstream{reference, std::ios::binary};
 
   file.read(reinterpret_cast<char*>(direct.data()), size);
 
