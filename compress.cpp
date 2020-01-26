@@ -85,10 +85,11 @@ void print_help() {
     << "Options:\n"
     << "\t--help\t\t\tPrints this documentation\n"
     << "\t--verbose\t\tPrint verbose output\n"
+    << "\t--statistics\t\tPrint only numerical summary of output\n"
+    << "\t--no-save\t\tDo not save the compressed file\n"
     << "\t--output=<file>\t\tWrite output to <file>, default being <input>.dag\n"
     << "\t--histogram=<file>\tSave histogram of node references in tree to <file>\n"
-    << "\t--statistics\t\tPrint only numerical summary of output\n"
-    << "\t--no-save\t\tDo not save the compressed file\n";
+    << "\t--dna-size=<size>\tThe number of nucleotides stored per leaf node, default is 12\n";
 }
 
 auto parse_commands(int argc, char* argv[]) {
@@ -131,6 +132,7 @@ auto parse_commands(int argc, char* argv[]) {
       continue;
     } else if (argument.substr(0, 11) == "--dna-size=") {
       argument.remove_prefix(11);
+      std::cout << argument << '\n';
       dna_size = std::atoi(argument.data());
       continue;
     } else { // Interpret as name of input file

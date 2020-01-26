@@ -31,10 +31,6 @@ enum class nac : char {
   N = 0b0110, Indeterminate = 0b1111
 };
 
-#ifndef DNA_STRAND_SIZE
-#define DNA_STRAND_SIZE 12
-#endif
-
 /******************************************************************************
  * FASTA-compliant DNA strand
  *  Only Uracil is neglected, as it is not present in DNA; all other FASTA
