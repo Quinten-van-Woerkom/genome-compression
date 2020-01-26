@@ -76,7 +76,7 @@ constexpr auto from_nac(nac code) -> char {
 /**
  * Constructors.
  */
-dna::dna(const std::string_view strand) {
+dna::dna(const std::string_view strand) : nucleotides{0} {
   assert(strand.size() == length);
   for (auto i = 0u; i < length; ++i) {
     set(i, strand[i]);
@@ -90,7 +90,9 @@ dna::dna(unsigned long long value) noexcept : nucleotides{value} {}
  */
 auto dna::random(unsigned seed) -> dna {
   std::srand(seed);
-  return dna{static_cast<unsigned long long>(rand() | ((std::uint64_t)rand() << 32))};
+  auto random = static_cast<unsigned long long>(rand() | ((std::uint64_t)rand() << 32));
+  auto mask = (1u << dna::size()) - 1;
+  return dna{random & mask};
 }
 
 /**
@@ -112,24 +114,10 @@ auto dna::transposed() const noexcept -> dna {
  * Returns a mirrored version of the DNA strand.
  */
 auto dna::mirrored() const noexcept -> dna {
-  // Bit twiddling hack for powers of two.
-  if constexpr (length == 2 || length == 4 || length == 8 || length == 16) {
-    auto v = nucleotides;
-    if constexpr (length >= 2)  // swap nibbles
-      v = ((v >> 4) & 0x0F0F0F0F0F0F0F0F) | ((v & 0x0F0F0F0F0F0F0F0F) << 4);
-    if constexpr (length >= 4) // swap bytes
-      v = ((v >> 8) & 0x00FF00FF00FF00FF) | ((v & 0x00FF00FF00FF00FF) << 8);
-    if constexpr (length >= 8) // swap 2-byte long pairs
-      v = ((v >> 16) & 0x0000FFFF0000FFFF) | ((v & 0x0000FFFF0000FFFF) << 16);
-    if constexpr (length >= 16) // swap 4-byte long pairs
-      v = ((v >> 32) & 0x00000000FFFFFFFF) | ((v & 0x00000000FFFFFFFF) << 32);
-    return dna{v};
-  } else {
-    dna result{};
-    for (auto i = 0u; i < length; ++i)
-      result.set(i, code(length - i - 1));
-    return result;
-  }
+  dna result{};
+  for (auto i = 0u; i < length; ++i)
+    result.set(i, code(length - i - 1));
+  return result;
 }
 
 /**
@@ -159,7 +147,7 @@ auto dna::canonical() const noexcept -> std::tuple<dna, bool, bool, bool> {
  * Big-endian storage format is used.
  */
 void dna::serialize(std::ostream& os) const {
-  binary_write(os, nucleotides);
+  binary_write(os, nucleotides, (dna::size()+1)/2);
 }
 
 /**
@@ -167,8 +155,8 @@ void dna::serialize(std::ostream& os) const {
  * Big-endian storage format is used.
  */
 auto dna::deserialize(std::istream& is) -> dna {
-  std::uint64_t value;
-  binary_read(is, value);
+  std::uint64_t value = 0;
+  binary_read(is, value, (dna::size() + 1)/2);
   return dna{value};
 }
 

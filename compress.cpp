@@ -98,6 +98,7 @@ auto parse_commands(int argc, char* argv[]) {
   bool verbose = false;
   bool statistics = false;
   bool save = true;
+  std::size_t dna_size = 12;
 
   if (argc == 1) {
     std::cout << "Invalid command: argument <file> required.\n";
@@ -117,16 +118,20 @@ auto parse_commands(int argc, char* argv[]) {
     } else if (argument == "--statistics") {
       statistics = true;
       continue;
-    } else if (argument.substr(0, 8) == "--output") {
+    } else if (argument.substr(0, 9) == "--output=") {
       argument.remove_prefix(9);
       output_file = argument;
       continue;
-    } else if (argument.substr(0, 11) == "--histogram") {
+    } else if (argument.substr(0, 12) == "--histogram=") {
       argument.remove_prefix(12);
       histogram = argument;
       continue;
     } else if (argument == "--no-save") {
       save = false;
+      continue;
+    } else if (argument.substr(0, 11) == "--dna-size=") {
+      argument.remove_prefix(11);
+      dna_size = std::atoi(argument.data());
       continue;
     } else { // Interpret as name of input file
       if (!input_file.empty()) {
@@ -154,11 +159,12 @@ auto parse_commands(int argc, char* argv[]) {
     output_file.replace_extension(".dag");
   }
 
-  return std::tuple{input_file, output_file, histogram, verbose, statistics};
+  return std::tuple{input_file, output_file, histogram, verbose, statistics, dna_size};
 }
 
 int main(int argc, char* argv[]) {
-  auto [input_file, output_file, histogram, verbose, statistics] = parse_commands(argc, argv);
+  auto [input_file, output_file, histogram, verbose, statistics, dna_size] = parse_commands(argc, argv);
+  dna::size(dna_size);
 
   if (!std::filesystem::is_regular_file(input_file)) {
     std::cout << "Invalid filename: " << input_file << '\n';

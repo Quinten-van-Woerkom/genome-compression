@@ -486,7 +486,7 @@ void shared_tree::sort_tree(bool verbose) {
  * Computes the number of bytes required to store the compressed tree.
  */
 auto shared_tree::bytes() const noexcept -> std::size_t {
-  auto memory = root.bytes() + 8 + leaves.size()*sizeof(dna);
+  auto memory = root.bytes() + 8 + leaves.size()*dna::bytes();
 
   for (const auto& layer : nodes) {
     memory += 8;  // Size of each layer is stored as 64 bits

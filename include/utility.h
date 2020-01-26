@@ -176,17 +176,17 @@ constexpr auto variadic_min(T1&& value1, T2&& value2, Ts&&... values) noexcept -
  *  Data is stored in big-endian order.
  */
 template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
-void binary_write(std::ostream& os, T value) {
-  for (int i = sizeof(T)-1; i >= 0; --i) {
+void binary_write(std::ostream& os, T value, std::size_t bytes = sizeof(T)) {
+  for (int i = bytes-1; i >= 0; --i) {
     unsigned char byte = (value >> (8*i)) & 0xff;
     os.put(byte);
   }
 }
 
 template<typename T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
-void binary_read(std::istream& is, T& value) {
+void binary_read(std::istream& is, T& value, std::size_t bytes = sizeof(T)) {
   value = 0;
-  for (int i = sizeof(T)-1; i >= 0; --i) {
+  for (int i = bytes-1; i >= 0; --i) {
     unsigned char byte;
     is.get(reinterpret_cast<char&>(byte));
     value |= ((T)byte << T(8*i));

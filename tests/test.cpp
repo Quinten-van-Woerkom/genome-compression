@@ -81,23 +81,17 @@ auto test_file_reader() -> int {
   auto reference = "data/chmpxx";
   auto size = std::filesystem::file_size(reference);
   auto buffered = fasta_reader{path};
-  auto direct = std::vector<std::array<char, dna::size()>>(size/dna::size());
+  // auto direct = std::vector<std::array<char, dna::size()>>(size/dna::size());
+  auto direct = std::vector<char>(size);
   auto file = std::ifstream{reference, std::ios::binary};
 
   file.read(reinterpret_cast<char*>(direct.data()), size);
-
-  expects(
-    direct.size() == size/dna::size(),
-    "File path size does not match read size within accuracy bounds\n",
-    "File path: ", size, '\n',
-    "Direct read: ", direct.size()*dna::size()
-  );
 
   auto i = 0u;
   std::vector<dna> buffer;
   while (buffered.read_into(buffer)) {
     for (auto b : buffer) {
-      auto d = std::string_view{direct[i].data(), direct[i].size()};
+      auto d = dna{std::string_view{&direct[i*dna::size()], dna::size()}};
       expects(
         b == d,
         "buffered[i] != direct[i] for i = ", i, " out of ", direct.size() - 1, '\n',
@@ -118,21 +112,21 @@ auto test_file_reader() -> int {
 }
 
 auto test_similarity_transforms() -> int {
-  // TEST_START("Similarity transforms");
+  TEST_START("Similarity transforms");
 
-  // { // No invariance
-  //   auto left = pointer{0, false, false, false};
-  //   auto right = pointer{1, true, false, false};
+  { // No invariance
+    auto left = pointer{0, false, false, false};
+    auto right = pointer{1, true, false, false};
 
-  //   auto a = node{left, right}.canonical();
-  //   auto b = a.mirrored().canonical();
-  //   auto c = a.transposed().canonical();
-  //   auto d = a.inverted().canonical();
+    auto a = std::get<0>(node{left, right}.canonical());
+    auto b = std::get<0>(a.mirrored().canonical());
+    auto c = std::get<0>(a.transposed().canonical());
+    auto d = std::get<0>(a.inverted().canonical());
 
-  //   expects(a == b, "Mirrored nodes should have the same canonical node: ", a, " != ", b);
-  //   expects(a == c, "Transposed nodes should have the same canonical node: ", a, " != ", c);
-  //   expects(a == d, "Inverted nodes should have the same canonical node: ", a, " != ", d);
-  // }
+    expects(a == b, "Mirrored nodes should have the same canonical node: ", a, " != ", b);
+    expects(a == c, "Transposed nodes should have the same canonical node: ", a, " != ", c);
+    expects(a == d, "Inverted nodes should have the same canonical node: ", a, " != ", d);
+  }
 
   // { // Invariance
   //   auto left = pointer{0, false, false, true};
@@ -233,7 +227,7 @@ auto test_similarity_transforms() -> int {
   //   expects(tree.node_count() == 2, "Leaves that are invariant under transformation should be considered as such when merging:\n", tree);
   // }
 
-  // TEST_END("Similarity transforms");
+  TEST_END("Similarity transforms");
   return 0;
 }
 

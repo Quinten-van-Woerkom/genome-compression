@@ -41,20 +41,22 @@ enum class nac : char {
  *  nucleic acid codes are supported.
  */
 class dna {
-  static constexpr std::size_t length = DNA_STRAND_SIZE;   // Length of a single strand
 public:
   dna() = default;
   dna(const std::string_view strand);
   dna(unsigned long long value) noexcept;
 
   static auto random(unsigned seed = 0) -> dna;
-  static constexpr auto size() noexcept -> std::size_t { return length; }
+  static auto size() noexcept -> std::size_t { return length; }
+  static auto size(std::size_t new_size) noexcept -> std::size_t { length = new_size; return length;}
 
   auto transposed() const noexcept -> dna;
   auto mirrored() const noexcept -> dna;
   auto inverted() const noexcept -> dna { return transposed().mirrored(); }
   auto invariant() const noexcept -> bool { return *this == mirrored(); }
   auto canonical() const noexcept -> std::tuple<dna, bool, bool, bool>;
+
+  static auto bytes() noexcept -> std::size_t { return (size()+1)/2; }
   void serialize(std::ostream& os) const;
   static auto deserialize(std::istream& is) -> dna;
 
@@ -72,7 +74,8 @@ private:
   void set(std::size_t index, char nucleotide);
   void set(std::size_t index, nac code);
 
-  std::uint64_t nucleotides : 4*length;
+  std::uint64_t nucleotides;
+  inline static std::size_t length = 12;   // Length of a single strand
 };
 
 auto operator<<(std::ostream& os, const dna& dna) -> std::ostream&;
