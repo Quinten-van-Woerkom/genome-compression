@@ -110,7 +110,7 @@ auto parse_commands(int argc, char* argv[]) {
 
     if (argument == "--help") {
       print_help();
-      exit(1);
+      exit(0);
     } else if (argument == "--verbose") {
       verbose = true;
       continue;
